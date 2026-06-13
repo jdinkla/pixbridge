@@ -2,6 +2,30 @@
 
 All notable changes to pixbridge are documented in this file.
 
+## [0.2.0] - 2026-06-13
+
+### Changed (breaking) — a model must always be specified
+
+- There is no longer any default model. Every generation requires an explicit
+  model:
+  - **CLI:** `--model` is required on `generate`, `style-transfer`, and
+    `consistency-check`. Omitting it prints `--model is required` and exits 1.
+  - **Library:** pass `model=` to the `ImageClient` generation methods; omitting
+    it raises `ValueError` (enforced centrally in
+    `BaseImageProvider.validate_params`).
+- Rationale: model names churn, so the library no longer ships a baked-in
+  default that could silently go stale.
+
+### Removed (breaking)
+
+- `ProviderCapabilities.default_model` — the hardcoded per-provider default.
+- `model_config.yaml`, the `config.py` loader (`load_model_config`,
+  `get_configured_model`), and the `--config` / `-c` CLI flag. Provider model
+  defaults are no longer read from a config file.
+
+Migration: replace reliance on the default/config with an explicit
+`--model <name>` (CLI) or `model="<name>"` (library) on every call.
+
 ## [0.1.1] - 2026-06-13
 
 ### Added — configurable style-preset directory
