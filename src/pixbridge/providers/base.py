@@ -47,6 +47,11 @@ class ProviderCapabilities:
     sizes: list[str]
     aspect_ratios: list[str]
     quality_levels: list[str] | None = None
+    # Closed allowlist of accepted model strings. ``None`` means no restriction
+    # — any model flows through to the provider SDK (the default pass-through
+    # behavior). A non-empty list rejects unknown models locally before any API
+    # call (OpenAI: gpt-image-2 only).
+    supported_models: list[str] | None = None
     default_model: str | None = None
     default_size: str | None = None
     default_aspect_ratio: str | None = None
@@ -293,6 +298,13 @@ class BaseImageProvider(ABC):
             ValueError: If any parameter is invalid for this provider.
         """
         caps = self.capabilities
+
+        if model is not None and caps.supported_models is not None \
+                and model not in caps.supported_models:
+            raise ValueError(
+                f"Invalid model '{model}' for {self.name}. "
+                f"Must be one of: {caps.supported_models}"
+            )
 
         if size is not None:
             caps.validate_size(size)

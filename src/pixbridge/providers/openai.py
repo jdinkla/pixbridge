@@ -108,6 +108,7 @@ OPENAI_CAPABILITIES = ProviderCapabilities(
     sizes=list(_OPENAI_RECOMMENDED_SIZES),
     aspect_ratios=list(ASPECT_RATIO_TO_SIZE.keys()),
     quality_levels=["low", "medium", "high", "auto"],
+    supported_models=["gpt-image-2"],
     default_model="gpt-image-2",
     default_size="1024x1024",
     default_aspect_ratio="1:1",

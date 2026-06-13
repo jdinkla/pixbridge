@@ -62,6 +62,30 @@ class TestOpenAICapabilities:
         # gpt-image-2 accepts multi-image input via images.edit.
         assert provider.capabilities.supports_reference_images is True
 
+    def test_supported_models_allowlist(self, provider):
+        assert provider.capabilities.supported_models == ["gpt-image-2"]
+
+
+class TestModelAllowlist:
+    def test_default_model_accepted(self, provider):
+        # The default (gpt-image-2) passes validation.
+        provider.validate_params(model="gpt-image-2")
+
+    @pytest.mark.parametrize("model", [
+        "gpt-image-1.5", "gpt-image-1", "gpt-image-1-mini", "dall-e-3",
+    ])
+    def test_unsupported_model_rejected(self, provider, model):
+        with pytest.raises(ValueError, match="Invalid model"):
+            provider.validate_params(model=model)
+
+    def test_rejected_before_api_call(self, provider, sample_prompt):
+        # An unsupported model must error locally without touching the SDK.
+        mock_client = MagicMock()
+        provider._client = mock_client
+        with pytest.raises(ValueError, match="Invalid model"):
+            provider.generate(sample_prompt, model="gpt-image-1")
+        mock_client.images.generate.assert_not_called()
+
 
 class TestAspectRatioToSize:
     def test_16_9(self, provider):
@@ -212,10 +236,10 @@ class TestOpenAIGenerate:
         provider._client = mock_client
 
         result = provider.generate(
-            sample_prompt, model="gpt-image-1.5", quality="high",
+            sample_prompt, model="gpt-image-2", quality="high",
         )
 
-        assert result.model == "gpt-image-1.5"
+        assert result.model == "gpt-image-2"
         assert result.metadata["quality"] == "high"
 
     def test_invalid_quality_raises(self, provider, sample_prompt):

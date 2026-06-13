@@ -10,8 +10,8 @@ Multi-provider AI image generation library supporting Gemini, OpenAI, and xAI.
 
 - Unified `ImageClient` API across providers
 - Image generation from structured YAML prompts
-- Style transfer (Gemini)
-- Reference image support for identity consistency (Gemini)
+- Style transfer (Gemini, OpenAI)
+- Reference image support for identity consistency (Gemini, OpenAI)
 - Consistency checking (generate N images from the same prompt for comparison)
 - Image integrity checks (transparency, corruption, truncation)
 - Thread-safe usage logging (JSONL)
@@ -54,8 +54,10 @@ path = client.generate_image(prompt, output_dir="output")
 | Provider | Models | Style Transfer | Reference Images |
 |----------|--------|:-:|:-:|
 | Gemini | gemini-3-pro-image-preview | yes | yes |
-| OpenAI | gpt-image-2 (default), gpt-image-1.5, gpt-image-1, gpt-image-1-mini | no | no |
+| OpenAI | gpt-image-2 | yes | yes |
 | xAI | grok-imagine-image | no | no |
+
+For OpenAI, style transfer and reference images run through `gpt-image-2`'s edits endpoint (a single reference image performs style transfer; multiple references compose) — there is no dedicated "style" parameter.
 
 Any model can be selected at runtime with `--model`. The CLI also accepts size presets `720p`, `1080p`, `2160p`, or a raw `WxH` string (resolved per-provider). OpenAI (`gpt-image-2`) validates sizes by rule — any `WxH` where both dimensions are divisible by 16, the ratio is within `[1:3, 3:1]`, and `max(W, H) ≤ 3840` — so true `9:16` (`1152x2048`) and `16:9` (`2048x1152`) work; `1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160` are recommended values surfaced for autocompletion.
 
