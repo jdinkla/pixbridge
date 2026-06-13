@@ -14,7 +14,6 @@ XAI_CAPABILITIES = ProviderCapabilities(
     sizes=[],  # xAI uses aspect ratios, not sizes
     aspect_ratios=["20:9", "16:9", "4:3", "3:2", "1:1"],
     quality_levels=None,  # xAI doesn't support quality parameter
-    default_model="grok-imagine-image",
     default_size=None,
     default_aspect_ratio="16:9",
 )
@@ -108,12 +107,10 @@ class XAIProvider(BaseImageProvider):
         del output_format, output_compression  # Unsupported by xAI.
         # Apply defaults
         caps = self.capabilities
-        model = model or caps.default_model
         aspect_ratio = aspect_ratio or caps.default_aspect_ratio
-        if model is None:
-            raise RuntimeError("xAI provider has no default model configured")
 
-        # Validate parameters (will raise for unsupported aspect ratios)
+        # Validate parameters (raises if no model was specified, or for
+        # unsupported aspect ratios)
         self.validate_params(model=model, aspect_ratio=aspect_ratio, quality=quality)
 
         # Generate the image

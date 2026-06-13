@@ -125,7 +125,15 @@ def generate_command(args: argparse.Namespace) -> int:
         )
 
         # Build generation parameters
-        model = args.model or config_model or caps.default_model
+        model = args.model or config_model
+        if model is None:
+            print(
+                f"Error: No model specified for provider '{provider_name}'. "
+                f"Pass --model or set providers.{provider_name}.default_model "
+                "in model_config.yaml.",
+                file=sys.stderr,
+            )
+            return 1
         gen_params: dict[str, str | None] = {
             "model": model,
             "aspect_ratio": aspect_ratio,
@@ -186,7 +194,6 @@ def providers_command(args: argparse.Namespace) -> int:
             caps = provider.capabilities
 
             print(f"  {name}:")
-            print(f"    Default model: {caps.default_model or 'N/A'}")
             if caps.sizes:
                 print(f"    Sizes: {', '.join(caps.sizes)}")
             print(f"    Aspect ratios: {', '.join(caps.aspect_ratios)}")
@@ -350,10 +357,18 @@ def consistency_check_command(args: argparse.Namespace) -> int:
         provider = get_provider(provider_name)
         caps = provider.capabilities
 
-        # Resolve model: CLI flag > config file > provider default
+        # Resolve model: CLI flag > config file
         config = _load_config_from_args(args)
         config_model = get_configured_model(config, provider_name)
-        model = args.model or config_model or caps.default_model
+        model = args.model or config_model
+        if model is None:
+            print(
+                f"Error: No model specified for provider '{provider_name}'. "
+                f"Pass --model or set providers.{provider_name}.default_model "
+                "in model_config.yaml.",
+                file=sys.stderr,
+            )
+            return 1
 
         # Resolve size presets (720p, 1080p, 2160p)
         resolved_size, preset_aspect = resolve_size_preset(args.size, provider_name)

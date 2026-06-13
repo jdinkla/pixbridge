@@ -33,10 +33,6 @@ class TestOpenAICapabilities:
     def test_name(self, provider):
         assert provider.name == "openai"
 
-    def test_default_model(self, provider):
-        caps = provider.capabilities
-        assert caps.default_model == "gpt-image-2"
-
     def test_sizes(self, provider):
         caps = provider.capabilities
         # `sizes` is the list of *recommended* sizes — rule-based validation
@@ -166,7 +162,7 @@ class TestOpenAIGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gpt-image-2")
 
         assert result.image_data == tiny_png_bytes
         assert result.mime_type == "image/png"
@@ -187,7 +183,7 @@ class TestOpenAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gpt-image-2")
 
         assert result.image_data == tiny_png_bytes
         assert result.metadata["image_url"] == "https://example.com/image.png"
@@ -199,7 +195,7 @@ class TestOpenAIGenerate:
         provider._client = mock_client
 
         with pytest.raises(ValueError, match="No image data"):
-            provider.generate(sample_prompt)
+            provider.generate(sample_prompt, model="gpt-image-2")
 
     def test_applies_defaults(self, provider, sample_prompt, tiny_png_bytes):
         encoded = base64.b64encode(tiny_png_bytes).decode("ascii")
@@ -209,7 +205,7 @@ class TestOpenAIGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gpt-image-2")
 
         assert result.metadata["quality"] == "low"
         assert result.metadata["aspect_ratio"] == "1:1"
@@ -222,7 +218,7 @@ class TestOpenAIGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt, aspect_ratio="16:9")
+        result = provider.generate(sample_prompt, model="gpt-image-2", aspect_ratio="16:9")
 
         # True 16:9 — was 1536x1024 (3:2) before the mapping was corrected.
         assert result.metadata["size"] == "2048x1152"
@@ -244,7 +240,7 @@ class TestOpenAIGenerate:
 
     def test_invalid_quality_raises(self, provider, sample_prompt):
         with pytest.raises(ValueError, match="Invalid quality"):
-            provider.generate(sample_prompt, quality="ultra")
+            provider.generate(sample_prompt, model="gpt-image-2", quality="ultra")
 
     def test_output_format_passed_through(self, provider, sample_prompt, tiny_png_bytes):
         encoded = base64.b64encode(tiny_png_bytes).decode("ascii")
@@ -255,7 +251,7 @@ class TestOpenAIGenerate:
         provider._client = mock_client
 
         result = provider.generate(
-            sample_prompt, output_format="webp", output_compression=85,
+            sample_prompt, model="gpt-image-2", output_format="webp", output_compression=85,
         )
 
         call_kwargs = mock_client.images.generate.call_args[1]
@@ -272,7 +268,7 @@ class TestOpenAIGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt, output_format="jpg")
+        result = provider.generate(sample_prompt, model="gpt-image-2", output_format="jpg")
 
         call_kwargs = mock_client.images.generate.call_args[1]
         assert call_kwargs["output_format"] == "jpeg"
@@ -286,7 +282,7 @@ class TestOpenAIGenerate:
         )
         provider._client = mock_client
 
-        provider.generate(sample_prompt, output_format="png", output_compression=50)
+        provider.generate(sample_prompt, model="gpt-image-2", output_format="png", output_compression=50)
 
         call_kwargs = mock_client.images.generate.call_args[1]
         # PNG ignores compression — the SDK rejects it, so we don't pass it.
@@ -294,7 +290,7 @@ class TestOpenAIGenerate:
 
     def test_invalid_output_format_raises(self, provider, sample_prompt):
         with pytest.raises(ValueError, match="Invalid output_format"):
-            provider.generate(sample_prompt, output_format="bmp")
+            provider.generate(sample_prompt, model="gpt-image-2", output_format="bmp")
 
 
 class TestOpenAIGenerateWithReferences:
@@ -312,7 +308,7 @@ class TestOpenAIGenerateWithReferences:
         ref2.write_bytes(tiny_png_bytes)
 
         result = provider.generate_with_references(
-            sample_prompt, reference_images=[ref1, ref2],
+            sample_prompt, model="gpt-image-2", reference_images=[ref1, ref2],
         )
 
         mock_client.images.edit.assert_called_once()
@@ -325,12 +321,14 @@ class TestOpenAIGenerateWithReferences:
     def test_missing_reference_raises(self, provider, sample_prompt, tmp_path):
         with pytest.raises(FileNotFoundError, match="Reference image not found"):
             provider.generate_with_references(
-                sample_prompt, reference_images=[tmp_path / "nope.png"],
+                sample_prompt, model="gpt-image-2", reference_images=[tmp_path / "nope.png"],
             )
 
     def test_empty_references_raises(self, provider, sample_prompt):
         with pytest.raises(ValueError, match="empty reference_images"):
-            provider.generate_with_references(sample_prompt, reference_images=[])
+            provider.generate_with_references(
+                sample_prompt, model="gpt-image-2", reference_images=[],
+            )
 
     def test_temperature_accepted_but_ignored(
         self, provider, sample_prompt, tiny_png_bytes, tmp_path,
@@ -346,7 +344,7 @@ class TestOpenAIGenerateWithReferences:
         ref.write_bytes(tiny_png_bytes)
 
         provider.generate_with_references(
-            sample_prompt, reference_images=[ref], temperature=0.3,
+            sample_prompt, model="gpt-image-2", reference_images=[ref], temperature=0.3,
         )
         # temperature is not part of the OpenAI image API surface
         call_kwargs = mock_client.images.edit.call_args[1]
@@ -370,6 +368,7 @@ class TestOpenAIStyleTransfer:
         result = provider.style_transfer(
             input_image=input_image,
             style_prompt="Restyle as 1920s film noir",
+            model="gpt-image-2",
         )
 
         mock_client.images.edit.assert_called_once()
@@ -510,7 +509,7 @@ class TestPromptTruncation:
         )
         provider._client = mock_client
 
-        result = provider.generate(big_prompt)
+        result = provider.generate(big_prompt, model="gpt-image-2")
 
         assert result.metadata["prompt_truncated"] is True
         assert result.metadata["original_prompt_length"] == len(long_prompt)
@@ -529,6 +528,6 @@ class TestPromptTruncation:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gpt-image-2")
 
         assert result.metadata["prompt_truncated"] is False

@@ -23,10 +23,6 @@ class TestXAICapabilities:
     def test_name(self, provider):
         assert provider.name == "xai"
 
-    def test_default_model(self, provider):
-        caps = provider.capabilities
-        assert caps.default_model == "grok-imagine-image"
-
     def test_sizes_empty(self, provider):
         assert provider.capabilities.sizes == []
 
@@ -58,10 +54,10 @@ class TestXAIValidateParams:
 
     def test_quality_not_supported(self, provider):
         with pytest.raises(ValueError, match="does not support quality"):
-            provider.validate_params(quality="high")
+            provider.validate_params(model="grok-imagine-image", quality="high")
 
     def test_none_params_accepted(self, provider):
-        provider.validate_params()
+        provider.validate_params(model="grok-imagine-image")
 
 
 class TestXAIGenerate:
@@ -77,7 +73,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="grok-imagine-image")
 
         assert result.image_data == tiny_png_bytes
         assert result.mime_type == "image/png"
@@ -96,7 +92,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        provider.generate(sample_prompt, aspect_ratio="4:3")
+        provider.generate(sample_prompt, model="grok-imagine-image", aspect_ratio="4:3")
 
         call_kwargs = mock_client.images.generate.call_args[1]
         assert call_kwargs["extra_body"] == {"aspect_ratio": "4:3"}
@@ -114,7 +110,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="grok-imagine-image")
 
         mock_get.assert_called_once_with(image_url, timeout=60)
         assert result.metadata["image_url"] == image_url
@@ -131,7 +127,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="grok-imagine-image")
 
         assert result.mime_type == "image/jpeg"
 
@@ -147,7 +143,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="grok-imagine-image")
 
         assert result.mime_type == "image/png"
 
@@ -167,7 +163,7 @@ class TestXAIGenerate:
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="grok-imagine-image")
 
         assert result.metadata["aspect_ratio"] == "16:9"
 

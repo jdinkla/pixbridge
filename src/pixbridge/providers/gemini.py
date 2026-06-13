@@ -55,7 +55,6 @@ GEMINI_CAPABILITIES = ProviderCapabilities(
     sizes=["1K", "2K"],
     aspect_ratios=["16:9", "4:3", "3:4", "9:16", "1:1"],
     quality_levels=None,
-    default_model="gemini-3-pro-image-preview",
     default_size="1K",
     default_aspect_ratio="16:9",
     supports_style_transfer=True,
@@ -123,13 +122,10 @@ class GeminiProvider(BaseImageProvider):
         del output_format, output_compression  # Unsupported by Gemini.
         # Apply defaults
         caps = self.capabilities
-        model = model or caps.default_model
         size = size or caps.default_size
         aspect_ratio = aspect_ratio or caps.default_aspect_ratio
-        if model is None:
-            raise RuntimeError("Gemini provider has no default model configured")
 
-        # Validate parameters
+        # Validate parameters (raises if no model was specified)
         self.validate_params(model=model, size=size, aspect_ratio=aspect_ratio)
 
         # Generate the image
@@ -192,12 +188,9 @@ class GeminiProvider(BaseImageProvider):
         """
         del output_format, output_compression  # Unsupported by Gemini.
         caps = self.capabilities
-        model = model or caps.default_model
         size = size or caps.default_size
         aspect_ratio = aspect_ratio or caps.default_aspect_ratio
         temperature = temperature if temperature is not None else 0.1
-        if model is None:
-            raise RuntimeError("Gemini provider has no default model configured")
 
         self.validate_params(model=model, size=size, aspect_ratio=aspect_ratio)
 

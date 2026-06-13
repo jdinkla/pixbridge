@@ -28,7 +28,6 @@ def _make_provider(
     provider.capabilities = ProviderCapabilities(
         sizes=["1K", "2K"],
         aspect_ratios=["16:9", "4:3", "1:1"],
-        default_model="default-model",
         default_size="1K",
         default_aspect_ratio="16:9",
         supports_style_transfer=supports_style_transfer,

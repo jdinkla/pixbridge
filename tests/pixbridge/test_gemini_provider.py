@@ -35,10 +35,6 @@ class TestGeminiCapabilities:
     def test_name(self, provider):
         assert provider.name == "gemini"
 
-    def test_default_model(self, provider):
-        caps = provider.capabilities
-        assert caps.default_model == "gemini-3-pro-image-preview"
-
     def test_sizes(self, provider):
         caps = provider.capabilities
         assert "1K" in caps.sizes
@@ -66,7 +62,7 @@ class TestGeminiGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gemini-3-pro-image-preview")
 
         assert result.image_data == tiny_png_bytes
         assert result.mime_type == "image/png"
@@ -81,7 +77,7 @@ class TestGeminiGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gemini-3-pro-image-preview")
 
         assert result.metadata["size"] == "1K"
         assert result.metadata["aspect_ratio"] == "16:9"
@@ -94,7 +90,7 @@ class TestGeminiGenerate:
         provider._client = mock_client
 
         result = provider.generate(
-            sample_prompt, size="2K", aspect_ratio="4:3",
+            sample_prompt, model="gemini-3-pro-image-preview", size="2K", aspect_ratio="4:3",
         )
 
         assert result.metadata["size"] == "2K"
@@ -109,7 +105,7 @@ class TestGeminiGenerate:
         )
         provider._client = mock_client
 
-        result = provider.generate(sample_prompt)
+        result = provider.generate(sample_prompt, model="gemini-3-pro-image-preview")
 
         assert result.image_data == tiny_png_bytes
 
@@ -119,11 +115,11 @@ class TestGeminiGenerate:
         provider._client = mock_client
 
         with pytest.raises(ValueError, match="No image found"):
-            provider.generate(sample_prompt)
+            provider.generate(sample_prompt, model="gemini-3-pro-image-preview")
 
     def test_invalid_size_raises(self, provider, sample_prompt):
         with pytest.raises(ValueError, match="Invalid size"):
-            provider.generate(sample_prompt, size="4K")
+            provider.generate(sample_prompt, model="gemini-3-pro-image-preview", size="4K")
 
 
 class TestGeminiGenerateWithReferences:
@@ -141,7 +137,7 @@ class TestGeminiGenerateWithReferences:
         provider._client = mock_client
 
         result = provider.generate_with_references(
-            sample_prompt, reference_images=[ref1, ref2],
+            sample_prompt, model="gemini-3-pro-image-preview", reference_images=[ref1, ref2],
         )
 
         assert result.provider == "gemini"
@@ -165,7 +161,7 @@ class TestGeminiGenerateWithReferences:
         provider._client = mock_client
 
         result = provider.generate_with_references(
-            sample_prompt, reference_images=[ref], temperature=0.5,
+            sample_prompt, model="gemini-3-pro-image-preview", reference_images=[ref], temperature=0.5,
         )
 
         assert result.metadata["temperature"] == 0.5
@@ -184,7 +180,7 @@ class TestGeminiGenerateWithReferences:
         provider._client = mock_client
 
         result = provider.generate_with_references(
-            sample_prompt, reference_images=refs,
+            sample_prompt, model="gemini-3-pro-image-preview", reference_images=refs,
         )
 
         # Only first 6 should be in metadata
@@ -202,7 +198,7 @@ class TestGeminiGenerateWithReferences:
         provider._client = mock_client
 
         provider.generate_with_references(
-            sample_prompt, reference_images=[existing, nonexistent],
+            sample_prompt, model="gemini-3-pro-image-preview", reference_images=[existing, nonexistent],
         )
 
         # Should still succeed — nonexistent is skipped in PIL loading
@@ -221,7 +217,7 @@ class TestGeminiGenerateWithReferences:
 
         with pytest.raises(ValueError, match="No image found"):
             provider.generate_with_references(
-                sample_prompt, reference_images=[ref],
+                sample_prompt, model="gemini-3-pro-image-preview", reference_images=[ref],
             )
 
 

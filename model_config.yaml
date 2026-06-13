@@ -1,7 +1,9 @@
 # Model configuration for image generation providers.
 # Auto-discovered from cwd, or pass explicitly: pixbridge --config path/to/config.yaml
 #
-# Resolution order: --model CLI flag > config file > hardcoded provider defaults
+# Resolution order: --model CLI flag > config file.
+# There is no hardcoded provider fallback — a model must be specified via one of
+# these, or (for library callers) passed explicitly to ImageClient methods.
 
 providers:
   gemini:

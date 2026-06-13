@@ -28,7 +28,6 @@ class ConcreteProvider(BaseImageProvider):
             sizes=["1K", "2K"],
             aspect_ratios=["16:9", "4:3", "1:1"],
             quality_levels=["low", "high"],
-            default_model="model-a",
             default_size="1K",
             default_aspect_ratio="16:9",
             default_quality="low",
@@ -68,7 +67,6 @@ class TestProviderCapabilities:
     def test_defaults(self):
         caps = ProviderCapabilities(sizes=[], aspect_ratios=[])
         assert caps.quality_levels is None
-        assert caps.default_model is None
         assert caps.max_prompt_length is None
         assert caps.supports_style_transfer is False
         assert caps.supports_reference_images is False
@@ -94,9 +92,11 @@ class TestValidateParams:
         p = ConcreteProvider()
         p.validate_params(model="model-a", size="1K", aspect_ratio="16:9", quality="low")
 
-    def test_all_none_accepted(self):
+    def test_missing_model_raises(self):
+        """A model is required — no default exists to fall back on."""
         p = ConcreteProvider()
-        p.validate_params()
+        with pytest.raises(ValueError, match="model must be specified"):
+            p.validate_params()
 
     def test_any_model_accepted(self):
         p = ConcreteProvider()
@@ -105,17 +105,17 @@ class TestValidateParams:
     def test_invalid_size(self):
         p = ConcreteProvider()
         with pytest.raises(ValueError, match="Invalid size"):
-            p.validate_params(size="4K")
+            p.validate_params(model="model-a", size="4K")
 
     def test_invalid_aspect_ratio(self):
         p = ConcreteProvider()
         with pytest.raises(ValueError, match="Invalid aspect ratio"):
-            p.validate_params(aspect_ratio="21:9")
+            p.validate_params(model="model-a", aspect_ratio="21:9")
 
     def test_invalid_quality(self):
         p = ConcreteProvider()
         with pytest.raises(ValueError, match="Invalid quality"):
-            p.validate_params(quality="ultra")
+            p.validate_params(model="model-a", quality="ultra")
 
     def test_quality_not_supported(self):
         """Provider without quality_levels rejects quality parameter."""
@@ -131,7 +131,7 @@ class TestValidateParams:
 
         p = NoQualityProvider()
         with pytest.raises(ValueError, match="does not support quality"):
-            p.validate_params(quality="high")
+            p.validate_params(model="model-a", quality="high")
 
     def test_empty_sizes_skips_validation(self):
         """When sizes list is empty, any size is accepted."""
@@ -142,7 +142,7 @@ class TestValidateParams:
                 return ProviderCapabilities(sizes=[], aspect_ratios=[])
 
         p = EmptySizesProvider()
-        p.validate_params(size="anything")
+        p.validate_params(model="model-a", size="anything")
 
 
 class TestGetApiKey:

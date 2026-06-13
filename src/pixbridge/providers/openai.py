@@ -109,7 +109,6 @@ OPENAI_CAPABILITIES = ProviderCapabilities(
     aspect_ratios=list(ASPECT_RATIO_TO_SIZE.keys()),
     quality_levels=["low", "medium", "high", "auto"],
     supported_models=["gpt-image-2"],
-    default_model="gpt-image-2",
     default_size="1024x1024",
     default_aspect_ratio="1:1",
     default_quality="low",
@@ -307,10 +306,7 @@ class OpenAIProvider(BaseImageProvider):
         """
         # Apply defaults
         caps = self.capabilities
-        model = model or caps.default_model
         quality = quality or caps.default_quality
-        if model is None:
-            raise RuntimeError("OpenAI provider has no default model configured")
         if quality is None:
             raise RuntimeError("OpenAI provider has no default quality configured")
 
@@ -443,10 +439,7 @@ class OpenAIProvider(BaseImageProvider):
         del temperature  # Unsupported by OpenAI image API; kept for parity.
 
         caps = self.capabilities
-        model = model or caps.default_model
         quality = quality or caps.default_quality
-        if model is None:
-            raise RuntimeError("OpenAI provider has no default model configured")
         if quality is None:
             raise RuntimeError("OpenAI provider has no default quality configured")
 

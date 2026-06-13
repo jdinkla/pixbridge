@@ -66,7 +66,6 @@ def gemini_capabilities() -> ProviderCapabilities:
         sizes=["1K", "2K"],
         aspect_ratios=["16:9", "4:3", "3:4", "9:16", "1:1"],
         quality_levels=None,
-        default_model="gemini-3-pro-image-preview",
         default_size="1K",
         default_aspect_ratio="16:9",
         supports_style_transfer=True,
@@ -80,7 +79,6 @@ def openai_capabilities() -> ProviderCapabilities:
         sizes=["1024x1024", "1024x1536", "1536x1024", "2560x1440", "3840x2160"],
         aspect_ratios=["16:9", "4:3", "3:4", "9:16", "1:1"],
         quality_levels=["low", "medium", "high"],
-        default_model="gpt-image-2",
         default_size="1024x1024",
         default_aspect_ratio="1:1",
         default_quality="low",
@@ -94,7 +92,6 @@ def xai_capabilities() -> ProviderCapabilities:
         sizes=[],
         aspect_ratios=["20:9", "16:9", "4:3", "3:2", "1:1"],
         quality_levels=None,
-        default_model="grok-imagine-image",
         default_size=None,
         default_aspect_ratio="16:9",
     )

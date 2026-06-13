@@ -52,7 +52,6 @@ class ProviderCapabilities:
     # behavior). A non-empty list rejects unknown models locally before any API
     # call (OpenAI: gpt-image-2 only).
     supported_models: list[str] | None = None
-    default_model: str | None = None
     default_size: str | None = None
     default_aspect_ratio: str | None = None
     default_quality: str | None = None
@@ -299,8 +298,14 @@ class BaseImageProvider(ABC):
         """
         caps = self.capabilities
 
-        if model is not None and caps.supported_models is not None \
-                and model not in caps.supported_models:
+        if model is None:
+            raise ValueError(
+                f"A model must be specified for {self.name}; there is no default. "
+                "Pass model=... (or set providers."
+                f"{self.name}.default_model in model_config.yaml when using the CLI)."
+            )
+
+        if caps.supported_models is not None and model not in caps.supported_models:
             raise ValueError(
                 f"Invalid model '{model}' for {self.name}. "
                 f"Must be one of: {caps.supported_models}"

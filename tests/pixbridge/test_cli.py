@@ -230,7 +230,6 @@ class TestProvidersCommand:
     def test_lists_providers(self, mock_get, capsys):
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="m1",
             sizes=["1K"],
             aspect_ratios=["16:9"],
             quality_levels=None,
@@ -242,7 +241,10 @@ class TestProvidersCommand:
 
         assert code == 0
         out = capsys.readouterr().out
-        assert "m1" in out
+        # The providers command no longer prints a "Default model:" line; it
+        # lists capability lines like Sizes and Aspect ratios.
+        assert "1K" in out
+        assert "16:9" in out
 
     @patch("pixbridge.cli.get_provider", side_effect=Exception("error"))
     def test_handles_provider_error(self, mock_get, capsys):
@@ -737,11 +739,13 @@ class TestGenerateConfigModel:
         assert call_kwargs["model"] == "cli-model"
 
     @patch("pixbridge.cli.ImageClient")
-    def test_provider_default_without_config(self, mock_cls, tmp_path, monkeypatch):
+    def test_no_model_without_config_errors(self, mock_cls, tmp_path, monkeypatch, capsys):
+        # The hardcoded-provider-default fallback is gone: with neither --model
+        # nor a config-provided model, the CLI now errors out instead of
+        # silently using a provider default.
         monkeypatch.chdir(tmp_path)  # no model_config.yaml here
         mock_client = MagicMock()
         mock_client.provider.capabilities = MagicMock(
-            default_model="hardcoded-default",
             default_quality="medium",
         )
         mock_client.generate_image.return_value = tmp_path / "image.png"
@@ -759,9 +763,9 @@ class TestGenerateConfigModel:
         )
         code = generate_command(args)
 
-        assert code == 0
-        call_kwargs = mock_client.generate_image.call_args[1]
-        assert call_kwargs["model"] == "hardcoded-default"
+        assert code == 1
+        assert "No model specified" in capsys.readouterr().err
+        mock_client.generate_image.assert_not_called()
 
 
 # --- config flag via main() argument parsing ---
