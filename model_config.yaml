@@ -1,0 +1,14 @@
+# Model configuration for image generation providers.
+# Auto-discovered from cwd, or pass explicitly: pixbridge --config path/to/config.yaml
+#
+# Resolution order: --model CLI flag > config file > hardcoded provider defaults
+
+providers:
+  gemini:
+    default_model: gemini-3.1-flash-image-preview
+  openai:
+    default_model: gpt-image-2
+  xai:
+    default_model: grok-imagine-image
+  vertex:
+    default_model: gemini-3.1-flash-image-preview

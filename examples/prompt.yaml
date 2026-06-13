@@ -1,0 +1,160 @@
+full_prompt: 'GOAL: This image serves as the title slide visual for a personal essay
+  presentation, setting a dark, contemplative, and tense film noir atmosphere. It
+  must establish the mood of veiled secrets and personal struggle, rendered as a forensic
+  artifact from a near-future algorithmic society.
+
+
+  SUBJECT: A digital illustration / graphic novel art depiction of a close-up on Venetian
+  blinds, casting stark, hard-edged shadows and narrow, stylized light bars onto a
+  dusty, sparsely furnished detective''s office wall. A woman''s gloved hand, rendered
+  with bold outlines and flat colors, hesitantly touches the blinds. Emphasize the
+  texture of dust motes as illustrated particles within the light beam.
+
+
+  COMPOSITION: The image fills the top 65% of a 16:9 frame, aligning with a split_horizontal
+  layout. This is a close-up, eye-level shot focused on the interaction of the hand,
+  blinds, and the graphic patterns of light and shadow. The composition should feel
+  deliberate and asymmetrical, treating the scene as evidence. Negative space is intentionally
+  used.
+
+
+  SETTING: A stylized, near-future detective''s office, abstract yet evocative. The
+  sense of old coffee and newer dust is conveyed through illustrated textures and
+  muted tones. This is a conceptual space, a psychological landscape for confession
+  or investigation.
+
+
+  LIGHTING: Low-key lighting with strong, hard-edged contrast and heavy shadows rendered
+  as solid blacks or deep greys. A single, directional light source, possibly a stylized
+  window or aperture, creates graphic light shapes. The narrow bar of light cutting
+  through the darkness should be a stark, dirty white or desaturated cyan, illuminating
+  illustrated dust motes. Light sources feel diegetic, like a signal.
+
+
+  TEXT_ELEMENTS: HEADLINE: "A Humiliation Rehearsed" - large serif bold, drop shadow,
+  bottom-left (40% width)
+
+  SUBHEADLINE: "The Office of Mister Cole" - medium serif, below headline
+
+  BODY: "Outside, Wilshire Boulevard was a dream of sunlight and chrome. Inside, the
+  room smelled of old coffee and newer dust. Madame Andermatt arrived with the air
+  of a woman who had already rehearsed her humiliation in front of a mirror, seeking
+  a discretion that only the shadows could provide." - medium serif, bottom text area
+  (60% width)
+
+  QUOTE: "The room darkened until all that was left of the day was a pale bar of light...
+  like the last line in a letter." - italic serif, emphasized
+
+  FOOTER: "www.dinkla.net" - small muted text, bottom-right corner
+
+
+  STYLE: Digital illustration / graphic novel art. This presentation uses digital
+  illustration / graphic novel art style throughout. CRITICAL: Visible linework with
+  defined edges on all subjects (objects, architecture, environments). Flat or cel-shaded
+  color fills with limited tonal gradation. Visible hatching or crosshatching for
+  shadows and texture. Hard shadow edges. Materials rendered as stylized illustration,
+  not photorealistic textures. AVOID: Photorealistic rendering of ANY subject, smooth
+  photographic gradients, raytraced reflections or realistic caustics, camera lens
+  effects (bokeh, chromatic aberration, lens flare), stock photo aesthetics, soft
+  AI-generated glow or polish, cute anime tropes, fantasy elements, watercolor illustration,
+  3D abstract renders, vector illustrations, technical diagrams.
+
+
+  FIDELITY: Objects and architecture rendered with bold outlines and simplified planes,
+  using graphic novel shadow techniques (solid blacks, sharp cutoffs). Textures are
+  drawn/illustrated, not photographic. Metal with illustrated reflections and hard
+  highlights. Stone/concrete with hatched or stippled texture. Clean but cold linework
+  with restrained roughness. Add subtle illustrated grain and noise to break perfection.
+
+
+  CONSISTENCY: For this personal essay, the Algorithmic Noir aesthetic must be consistently
+  applied. The color palette of muted steel blue, desaturated cyan, cold greys, dirty
+  whites, and charcoal blacks will be maintained. The overall feel of a ''forensic
+  artifact'' will recur, implying a world governed by algorithms.'
+sections:
+  goal: This image serves as the title slide visual for a personal essay presentation,
+    setting a dark, contemplative, and tense film noir atmosphere. It must establish
+    the mood of veiled secrets and personal struggle, rendered as a forensic artifact
+    from a near-future algorithmic society.
+  subject: A digital illustration / graphic novel art depiction of a close-up on Venetian
+    blinds, casting stark, hard-edged shadows and narrow, stylized light bars onto
+    a dusty, sparsely furnished detective's office wall. A woman's gloved hand, rendered
+    with bold outlines and flat colors, hesitantly touches the blinds. Emphasize the
+    texture of dust motes as illustrated particles within the light beam.
+  composition: The image fills the top 65% of a 16:9 frame, aligning with a split_horizontal
+    layout. This is a close-up, eye-level shot focused on the interaction of the hand,
+    blinds, and the graphic patterns of light and shadow. The composition should feel
+    deliberate and asymmetrical, treating the scene as evidence. Negative space is
+    intentionally used.
+  setting: A stylized, near-future detective's office, abstract yet evocative. The
+    sense of old coffee and newer dust is conveyed through illustrated textures and
+    muted tones. This is a conceptual space, a psychological landscape for confession
+    or investigation.
+  lighting: Low-key lighting with strong, hard-edged contrast and heavy shadows rendered
+    as solid blacks or deep greys. A single, directional light source, possibly a
+    stylized window or aperture, creates graphic light shapes. The narrow bar of light
+    cutting through the darkness should be a stark, dirty white or desaturated cyan,
+    illuminating illustrated dust motes. Light sources feel diegetic, like a signal.
+  text_elements: 'HEADLINE: "A Humiliation Rehearsed" - large serif bold, drop shadow,
+    bottom-left (40% width)
+
+    SUBHEADLINE: "The Office of Mister Cole" - medium serif, below headline
+
+    BODY: "Outside, Wilshire Boulevard was a dream of sunlight and chrome. Inside,
+    the room smelled of old coffee and newer dust. Madame Andermatt arrived with the
+    air of a woman who had already rehearsed her humiliation in front of a mirror,
+    seeking a discretion that only the shadows could provide." - medium serif, bottom
+    text area (60% width)
+
+    QUOTE: "The room darkened until all that was left of the day was a pale bar of
+    light... like the last line in a letter." - italic serif, emphasized
+
+    FOOTER: "www.dinkla.net" - small muted text, bottom-right corner'
+  style: 'Digital illustration / graphic novel art. This presentation uses digital
+    illustration / graphic novel art style throughout. CRITICAL: Visible linework
+    with defined edges on all subjects (objects, architecture, environments). Flat
+    or cel-shaded color fills with limited tonal gradation. Visible hatching or crosshatching
+    for shadows and texture. Hard shadow edges. Materials rendered as stylized illustration,
+    not photorealistic textures. AVOID: Photorealistic rendering of ANY subject, smooth
+    photographic gradients, raytraced reflections or realistic caustics, camera lens
+    effects (bokeh, chromatic aberration, lens flare), stock photo aesthetics, soft
+    AI-generated glow or polish, cute anime tropes, fantasy elements, watercolor illustration,
+    3D abstract renders, vector illustrations, technical diagrams.'
+  fidelity: Objects and architecture rendered with bold outlines and simplified planes,
+    using graphic novel shadow techniques (solid blacks, sharp cutoffs). Textures
+    are drawn/illustrated, not photographic. Metal with illustrated reflections and
+    hard highlights. Stone/concrete with hatched or stippled texture. Clean but cold
+    linework with restrained roughness. Add subtle illustrated grain and noise to
+    break perfection.
+  consistency: For this personal essay, the Algorithmic Noir aesthetic must be consistently
+    applied. The color palette of muted steel blue, desaturated cyan, cold greys,
+    dirty whites, and charcoal blacks will be maintained. The overall feel of a 'forensic
+    artifact' will recur, implying a world governed by algorithms.
+generation_notes:
+  aspect_ratio: '16:9'
+  negative_prompts:
+  - photorealistic rendering
+  - smooth photographic gradients
+  - raytraced reflections
+  - realistic caustics
+  - camera lens effects (bokeh, chromatic aberration, lens flare)
+  - stock photo aesthetics
+  - soft AI-generated glow or polish
+  - cute anime tropes
+  - fantasy elements
+  - watercolor illustration
+  - soft edges
+  - organic textures
+  - warm, inviting atmosphere
+  - 3d abstract renders
+  - vector illustrations
+  - technical diagrams
+  key_requirements:
+  - Must be digital illustration / graphic novel art with visible linework and defined
+    edges
+  - Strong, hard-edged shadows and graphic light patterns from blinds
+  - Woman's gloved hand must feel hesitant and stylized, with bold outlines
+  - Dust motes rendered as illustrated particles in the light beam
+  - Overall aesthetic of a forensic artifact from a near-future algorithmic society
+  - Muted, oppressive color palette (steel blue, cold greys, charcoal blacks) with
+    a single stark light bar (dirty white/desaturated cyan)

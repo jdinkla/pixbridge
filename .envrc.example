@@ -1,0 +1,5 @@
+# Copy to .envrc (gitignored) and fill in your own provider API keys.
+# Then run `direnv allow`, or source this file manually.
+export GOOGLE_API_KEY="your-google-genai-key"
+export OPENAI_API_KEY="your-openai-key"
+export XAI_API_KEY="your-xai-key"
