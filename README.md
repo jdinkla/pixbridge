@@ -83,6 +83,28 @@ caps.native_size(2048, 1152)        # -> "2048x1152"
 
 `get_capabilities("vertex")` returns Gemini's surface (Vertex shares it) and never requires `GOOGLE_CLOUD_PROJECT`.
 
+## Style presets
+
+Style-transfer presets are Markdown files looked up by name. Pass `--style` (or
+the `style` argument) as a preset name (`anime-dark`), a subdir-qualified name
+(`anime/anime-dark`), a path to a `.md` file, or raw prompt text.
+
+The preset directory resolves in this order: an explicit
+`ImageClient(style_presets_dir=...)` / `--styles-dir` argument, then the
+`PIXBRIDGE_STYLE_PRESETS_DIR` environment variable, then `prompts/style-transfer`
+relative to the current working directory. When none of these contain the named
+preset, the value is treated as raw prompt text.
+
+```bash
+export PIXBRIDGE_STYLE_PRESETS_DIR=~/my-styles
+pixbridge style-transfer img.png --style anime-dark
+pixbridge style-transfer img.png --style anime-dark --styles-dir ./other-styles
+```
+
+```python
+client = ImageClient(provider="gemini", style_presets_dir="~/my-styles")
+```
+
 ## Configuration
 
 Per-provider defaults live in `model_config.yaml` (auto-discovered from the current working directory, or pass `--config path/to/file.yaml`). Resolution order: `--model` CLI flag > config file > hardcoded provider default.

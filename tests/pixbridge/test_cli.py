@@ -266,6 +266,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=True,
+            styles_dir=None,
             input=None,
             style=None,
             output=None,
@@ -284,6 +285,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=True,
+            styles_dir=None,
             input=None,
             style=None,
             output=None,
@@ -300,6 +302,7 @@ class TestStyleTransferCommand:
     def test_missing_input_returns_1(self, capsys):
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=None,
             style="anime-dark",
             output=None,
@@ -319,6 +322,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(input_img),
             style=None,
             output=None,
@@ -335,6 +339,7 @@ class TestStyleTransferCommand:
     def test_nonexistent_input_returns_1(self, capsys, tmp_path):
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(tmp_path / "nope.png"),
             style="anime-dark",
             output=None,
@@ -361,6 +366,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(input_img),
             style="anime-dark",
             output=str(tmp_path / "output.png"),
@@ -385,6 +391,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(input_img),
             style="anime-dark",
             output=None,
@@ -406,6 +413,7 @@ class TestStyleTransferCommand:
 
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(input_file),
             style="anime-dark",
             output=None,
@@ -423,6 +431,7 @@ class TestStyleTransferCommand:
         # input is a directory but not in batch mode
         args = argparse.Namespace(
             list_styles=False,
+            styles_dir=None,
             input=str(tmp_path),
             style="anime-dark",
             output=None,

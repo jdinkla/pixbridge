@@ -7,7 +7,14 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from pixbridge.client import VALID_ASPECT_RATIOS, VALID_SIZES, GeminiImageClient, ImageClient
+from pixbridge.client import (
+    STYLE_PRESETS_DIR_ENV,
+    VALID_ASPECT_RATIOS,
+    VALID_SIZES,
+    GeminiImageClient,
+    ImageClient,
+    _resolve_presets_dir,
+)
 from pixbridge.providers.base import GenerationResult, ProviderCapabilities
 
 
@@ -465,6 +472,71 @@ class TestListStylePresets:
     def test_empty_when_no_dir(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         assert ImageClient.list_style_presets() == []
+
+
+class TestConfigurableStylePresetsDir:
+    """Style presets must be resolvable outside the default cwd location."""
+
+    def test_explicit_preset_dir_argument(self, tmp_path):
+        styles = tmp_path / "my-styles"
+        (styles / "anime").mkdir(parents=True)
+        (styles / "anime" / "anime-dark.md").write_text("Dark anime")
+
+        assert ImageClient._resolve_style("anime-dark", styles) == "Dark anime"
+        assert ImageClient.list_style_presets(styles) == ["anime/anime-dark"]
+
+    def test_env_var_override(self, tmp_path, monkeypatch):
+        styles = tmp_path / "env-styles"
+        styles.mkdir()
+        (styles / "noir.md").write_text("Noir style")
+        monkeypatch.setenv(STYLE_PRESETS_DIR_ENV, str(styles))
+        # cwd has no prompts/style-transfer, so only the env var can resolve it
+        monkeypatch.chdir(tmp_path)
+
+        assert ImageClient._resolve_style("noir") == "Noir style"
+        assert ImageClient.list_style_presets() == ["noir"]
+
+    def test_explicit_arg_beats_env_var(self, tmp_path, monkeypatch):
+        env_dir = tmp_path / "env"
+        env_dir.mkdir()
+        (env_dir / "s.md").write_text("from env")
+        arg_dir = tmp_path / "arg"
+        arg_dir.mkdir()
+        (arg_dir / "s.md").write_text("from arg")
+        monkeypatch.setenv(STYLE_PRESETS_DIR_ENV, str(env_dir))
+
+        assert ImageClient._resolve_style("s", arg_dir) == "from arg"
+
+    def test_resolution_precedence_helper(self, tmp_path, monkeypatch):
+        monkeypatch.delenv(STYLE_PRESETS_DIR_ENV, raising=False)
+        assert _resolve_presets_dir() == Path("prompts/style-transfer")
+        monkeypatch.setenv(STYLE_PRESETS_DIR_ENV, str(tmp_path))
+        assert _resolve_presets_dir() == tmp_path
+        explicit = tmp_path / "x"
+        assert _resolve_presets_dir(explicit) == explicit
+
+    def test_constructor_threads_dir_into_style_transfer(self, tiny_png_bytes, tmp_path):
+        styles = tmp_path / "styles"
+        styles.mkdir()
+        (styles / "anime-dark.md").write_text("Apply dark anime look")
+
+        client = ImageClient(style_presets_dir=styles)
+        mock_provider = _make_provider(supports_style_transfer=True)
+        mock_provider.style_transfer.return_value = GenerationResult(
+            image_data=tiny_png_bytes,
+            mime_type="image/png",
+            provider="mock",
+            model="m",
+        )
+        client._provider = mock_provider
+
+        input_img = tmp_path / "input.png"
+        Image.new("RGB", (10, 10)).save(input_img)
+        client.style_transfer_image(input_img, "anime-dark", tmp_path / "out.png")
+
+        # The configured dir resolved the preset name to its text before sending
+        sent_prompt = mock_provider.style_transfer.call_args.kwargs["style_prompt"]
+        assert "Apply dark anime look" in sent_prompt
 
 
 class TestAvailableProviders:

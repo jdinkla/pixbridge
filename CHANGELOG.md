@@ -2,7 +2,24 @@
 
 All notable changes to pixbridge are documented in this file.
 
-## [Unreleased]
+## [0.1.1] - 2026-06-13
+
+### Added — configurable style-preset directory
+
+- `ImageClient(style_presets_dir=...)` lets callers point style-transfer preset
+  lookup at any directory instead of the cwd-relative `prompts/style-transfer`.
+- New `PIXBRIDGE_STYLE_PRESETS_DIR` environment variable overrides the default
+  directory globally; the `style-transfer` and `consistency-check` CLI commands
+  gain a `--styles-dir` flag. Resolution order: explicit argument →
+  environment variable → `prompts/style-transfer`.
+- `_resolve_style()` and `list_style_presets()` accept an optional `preset_dir`.
+
+This removes the prior hard dependency on running from a directory that happened
+to contain `prompts/style-transfer`.
+
+## [0.1.0] - 2026-06-13
+
+First open-source release (renamed from the internal `image-genpy` package).
 
 ### Changed (breaking) — OpenAI size handling
 

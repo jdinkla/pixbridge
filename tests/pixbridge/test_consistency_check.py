@@ -245,6 +245,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality=None,
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 
@@ -283,6 +284,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality=None,
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 
@@ -302,6 +304,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality=None,
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 
@@ -348,6 +351,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality="low",
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 
@@ -387,6 +391,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality=None,
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 
@@ -429,6 +434,7 @@ class TestConsistencyCheckCommand:
             aspect_ratio="16:9",
             quality=None,
             scene=None,
+            styles_dir=None,
         )
         code = consistency_check_command(args)
 

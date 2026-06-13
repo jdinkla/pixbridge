@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 
-from .client import ImageClient
+from .client import ImageClient, _resolve_presets_dir
 from .config import get_configured_model, load_model_config
 from .consistency_check import (
     DEFAULT_COUNT,
@@ -210,10 +210,12 @@ def style_transfer_command(args: argparse.Namespace) -> int:
         Exit code (0 for success, 1 for failure).
     """
     # Handle --list-styles
+    styles_dir = Path(args.styles_dir) if args.styles_dir else None
     if args.list_styles:
-        presets = ImageClient.list_style_presets()
+        presets = ImageClient.list_style_presets(styles_dir)
         if not presets:
-            print("No style presets found in prompts/style-transfer/")
+            search_dir = _resolve_presets_dir(styles_dir)
+            print(f"No style presets found in {search_dir}/")
             return 0
         print("Available style presets:")
         for name in presets:
@@ -235,7 +237,9 @@ def style_transfer_command(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        client = ImageClient(provider="gemini", usage_log=DEFAULT_USAGE_LOG)
+        client = ImageClient(
+            provider="gemini", usage_log=DEFAULT_USAGE_LOG, style_presets_dir=styles_dir
+        )
 
         # Resolve model: CLI flag > config file > None (let provider decide)
         config = _load_config_from_args(args)
@@ -338,7 +342,8 @@ def consistency_check_command(args: argparse.Namespace) -> int:
     """
     try:
         # Resolve style text and normalize label for filenames/dirs
-        style_text = ImageClient._resolve_style(args.style)
+        styles_dir = Path(args.styles_dir) if args.styles_dir else None
+        style_text = ImageClient._resolve_style(args.style, styles_dir)
         style_label = normalize_style_label(args.style)
 
         provider_name = args.provider
@@ -571,6 +576,13 @@ def main() -> int:
         help="List available style presets and exit",
     )
     st_parser.add_argument(
+        "--styles-dir",
+        type=str,
+        default=None,
+        help="Directory of style preset .md files "
+        "(default: $PIXBRIDGE_STYLE_PRESETS_DIR or prompts/style-transfer)",
+    )
+    st_parser.add_argument(
         "--batch",
         "-b",
         action="store_true",
@@ -601,6 +613,13 @@ def main() -> int:
         type=int,
         default=DEFAULT_COUNT,
         help=f"Number of images to generate (default: {DEFAULT_COUNT})",
+    )
+    cc_parser.add_argument(
+        "--styles-dir",
+        type=str,
+        default=None,
+        help="Directory of style preset .md files "
+        "(default: $PIXBRIDGE_STYLE_PRESETS_DIR or prompts/style-transfer)",
     )
     cc_parser.add_argument(
         "--output",

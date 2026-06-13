@@ -1,6 +1,7 @@
 """Unified image generation client with multi-provider support."""
 
 import io
+import os
 import time
 import uuid
 from datetime import UTC, datetime
@@ -12,6 +13,29 @@ from .models import ImagePrompt
 from .providers import get_provider, list_providers
 from .providers.base import BaseImageProvider, GenerationResult
 from .size_resolver import resolve_size_preset
+
+#: Default location for style-transfer presets, relative to the current working
+#: directory. Override per-instance with ``ImageClient(style_presets_dir=...)``
+#: or globally with the ``PIXBRIDGE_STYLE_PRESETS_DIR`` environment variable.
+DEFAULT_STYLE_PRESETS_DIR = Path("prompts/style-transfer")
+
+#: Environment variable that overrides the style-preset directory.
+STYLE_PRESETS_DIR_ENV = "PIXBRIDGE_STYLE_PRESETS_DIR"
+
+
+def _resolve_presets_dir(preset_dir: Path | None = None) -> Path:
+    """Resolve the style-preset directory.
+
+    Resolution order: explicit ``preset_dir`` argument, then the
+    ``PIXBRIDGE_STYLE_PRESETS_DIR`` environment variable, then
+    :data:`DEFAULT_STYLE_PRESETS_DIR`.
+    """
+    if preset_dir is not None:
+        return Path(preset_dir)
+    env_dir = os.environ.get(STYLE_PRESETS_DIR_ENV)
+    if env_dir:
+        return Path(env_dir)
+    return DEFAULT_STYLE_PRESETS_DIR
 
 
 class ImageClient:
@@ -25,6 +49,7 @@ class ImageClient:
         default_output_format: str | None = None,
         default_output_compression: int | None = None,
         default_reference_images: list[Path] | None = None,
+        style_presets_dir: Path | None = None,
     ):
         """Initialize the image client.
 
@@ -43,6 +68,11 @@ class ImageClient:
                 supports references), generate_image() is silently promoted to
                 generate_image_with_references(). Per-call references on
                 generate_image_with_references() always win.
+            style_presets_dir: Directory holding style-transfer preset ``.md``
+                files. When None, falls back to the
+                ``PIXBRIDGE_STYLE_PRESETS_DIR`` environment variable, then to
+                ``prompts/style-transfer`` relative to the current working
+                directory.
         """
         self.provider_name = provider
         self._api_key = api_key
@@ -51,6 +81,7 @@ class ImageClient:
         self.default_output_format = default_output_format
         self.default_output_compression = default_output_compression
         self.default_reference_images: list[Path] = list(default_reference_images or [])
+        self.style_presets_dir = style_presets_dir
 
     @property
     def provider(self) -> BaseImageProvider:
@@ -308,7 +339,7 @@ class ImageClient:
             raise FileNotFoundError(f"Input image not found: {input_image}")
 
         # Resolve style to prompt text
-        style_prompt = self._resolve_style(style)
+        style_prompt = self._resolve_style(style, self.style_presets_dir)
 
         # Build the full prompt
         full_prompt = (
@@ -347,12 +378,15 @@ class ImageClient:
         return output_path
 
     @staticmethod
-    def _resolve_style(style: str) -> str:
+    def _resolve_style(style: str, preset_dir: Path | None = None) -> str:
         """Resolve a style argument to prompt text.
 
         Args:
             style: Style preset name (e.g. 'anime-dark' or 'anime/anime-dark'),
                    file path, or raw style prompt text.
+            preset_dir: Directory to search for presets. When None, resolves via
+                   ``PIXBRIDGE_STYLE_PRESETS_DIR`` then the default
+                   ``prompts/style-transfer``.
 
         Returns:
             The style prompt text.
@@ -363,27 +397,33 @@ class ImageClient:
             return style_path.read_text()
 
         # Check if it's a preset name (direct path, e.g. "anime/anime-dark")
-        preset_dir = Path("prompts/style-transfer")
+        preset_dir = _resolve_presets_dir(preset_dir)
         preset_path = preset_dir / f"{style}.md"
         if preset_path.exists():
             return preset_path.read_text()
 
         # Search subdirectories for bare name (e.g. "anime-dark")
-        for md_file in preset_dir.rglob(f"{style}.md"):
-            return md_file.read_text()
+        if preset_dir.exists():
+            for md_file in preset_dir.rglob(f"{style}.md"):
+                return md_file.read_text()
 
         # Treat as raw prompt text
         return style
 
     @staticmethod
-    def list_style_presets() -> list[str]:
+    def list_style_presets(preset_dir: Path | None = None) -> list[str]:
         """List available style transfer presets.
+
+        Args:
+            preset_dir: Directory to search for presets. When None, resolves via
+                   ``PIXBRIDGE_STYLE_PRESETS_DIR`` then the default
+                   ``prompts/style-transfer``.
 
         Returns:
             Sorted list of preset names (including subdirectory prefix,
             e.g. 'anime/anime-dark', 'noir/vintage-editorial-noir').
         """
-        preset_dir = Path("prompts/style-transfer")
+        preset_dir = _resolve_presets_dir(preset_dir)
         if not preset_dir.exists():
             return []
         return sorted(
