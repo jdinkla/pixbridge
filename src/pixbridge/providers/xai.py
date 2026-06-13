@@ -112,6 +112,7 @@ class XAIProvider(BaseImageProvider):
         # Validate parameters (raises if no model was specified, or for
         # unsupported aspect ratios)
         self.validate_params(model=model, aspect_ratio=aspect_ratio, quality=quality)
+        assert model is not None  # narrowed: validate_params raises when None
 
         # Generate the image
         client = self._get_client()

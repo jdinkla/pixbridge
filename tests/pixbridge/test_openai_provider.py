@@ -63,8 +63,8 @@ class TestOpenAICapabilities:
 
 
 class TestModelAllowlist:
-    def test_default_model_accepted(self, provider):
-        # The default (gpt-image-2) passes validation.
+    def test_allowlisted_model_accepted(self, provider):
+        # The sole allowlisted model (gpt-image-2) passes validation.
         provider.validate_params(model="gpt-image-2")
 
     @pytest.mark.parametrize("model", [

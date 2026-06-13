@@ -301,8 +301,7 @@ class BaseImageProvider(ABC):
         if model is None:
             raise ValueError(
                 f"A model must be specified for {self.name}; there is no default. "
-                "Pass model=... (or set providers."
-                f"{self.name}.default_model in model_config.yaml when using the CLI)."
+                "Pass model=... (CLI: --model)."
             )
 
         if caps.supported_models is not None and model not in caps.supported_models:

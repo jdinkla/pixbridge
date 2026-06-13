@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 
 from .client import ImageClient, _resolve_presets_dir
-from .config import get_configured_model, load_model_config
 from .consistency_check import (
     DEFAULT_COUNT,
     DEFAULT_TEST_SCENE,
@@ -44,35 +43,9 @@ def load_prompt_from_yaml(yaml_path: Path) -> ImagePrompt:
     return ImagePrompt.model_validate(prompt_data)
 
 
-DEFAULT_CONFIG = Path("model_config.yaml")
-
-
-def _load_config_from_args(args: argparse.Namespace) -> dict | None:
-    """Load model config: explicit --config path, or auto-discover model_config.yaml in cwd.
-
-    Returns:
-        Parsed config dict, or None if no config file found.
-
-    Raises:
-        SystemExit: If an explicit --config path is not found or invalid.
-    """
-    config_path = getattr(args, "config", None)
-    if config_path is not None:
-        # Explicit path — error if missing/invalid
-        try:
-            return load_model_config(Path(config_path))
-        except (FileNotFoundError, ValueError) as e:
-            print(f"Error: {e}", file=sys.stderr)
-            sys.exit(1)
-
-    # Auto-discover in cwd — silently skip if absent
-    if DEFAULT_CONFIG.exists():
-        try:
-            return load_model_config(DEFAULT_CONFIG)
-        except (FileNotFoundError, ValueError):
-            return None
-
-    return None
+#: Shared error when a command is invoked without a model. There is no default
+#: model — the caller must always pass one.
+_NO_MODEL_ERROR = "Error: --model is required (there is no default model)."
 
 
 def generate_command(args: argparse.Namespace) -> int:
@@ -104,9 +77,9 @@ def generate_command(args: argparse.Namespace) -> int:
         # Get provider capabilities for defaults
         caps = client.provider.capabilities
 
-        # Resolve model: CLI flag > config file > provider default
-        config = _load_config_from_args(args)
-        config_model = get_configured_model(config, provider_name)
+        if args.model is None:
+            print(_NO_MODEL_ERROR, file=sys.stderr)
+            return 1
 
         # Resolve size presets (720p, 1080p, 2160p) — only when user provided --size
         resolved_size: str | None
@@ -125,15 +98,7 @@ def generate_command(args: argparse.Namespace) -> int:
         )
 
         # Build generation parameters
-        model = args.model or config_model
-        if model is None:
-            print(
-                f"Error: No model specified for provider '{provider_name}'. "
-                f"Pass --model or set providers.{provider_name}.default_model "
-                "in model_config.yaml.",
-                file=sys.stderr,
-            )
-            return 1
+        model = args.model
         gen_params: dict[str, str | None] = {
             "model": model,
             "aspect_ratio": aspect_ratio,
@@ -238,6 +203,10 @@ def style_transfer_command(args: argparse.Namespace) -> int:
         print("Error: --style is required", file=sys.stderr)
         return 1
 
+    if args.model is None:
+        print(_NO_MODEL_ERROR, file=sys.stderr)
+        return 1
+
     input_path = Path(args.input)
     if not input_path.exists():
         print(f"Error: Input not found: {input_path}", file=sys.stderr)
@@ -248,11 +217,7 @@ def style_transfer_command(args: argparse.Namespace) -> int:
             provider="gemini", usage_log=DEFAULT_USAGE_LOG, style_presets_dir=styles_dir
         )
 
-        # Resolve model: CLI flag > config file > None (let provider decide)
-        config = _load_config_from_args(args)
-        config_model = get_configured_model(config, "gemini")
-        resolved_model = args.model or config_model
-        args.model = resolved_model
+        resolved_model = args.model
 
         # Batch mode
         if args.batch:
@@ -357,18 +322,10 @@ def consistency_check_command(args: argparse.Namespace) -> int:
         provider = get_provider(provider_name)
         caps = provider.capabilities
 
-        # Resolve model: CLI flag > config file
-        config = _load_config_from_args(args)
-        config_model = get_configured_model(config, provider_name)
-        model = args.model or config_model
-        if model is None:
-            print(
-                f"Error: No model specified for provider '{provider_name}'. "
-                f"Pass --model or set providers.{provider_name}.default_model "
-                "in model_config.yaml.",
-                file=sys.stderr,
-            )
+        if args.model is None:
+            print(_NO_MODEL_ERROR, file=sys.stderr)
             return 1
+        model = args.model
 
         # Resolve size presets (720p, 1080p, 2160p)
         resolved_size, preset_aspect = resolve_size_preset(args.size, provider_name)
@@ -476,13 +433,6 @@ def main() -> int:
         prog="pixbridge",
         description="Generate images from prompts using multiple AI providers",
     )
-    parser.add_argument(
-        "--config",
-        "-c",
-        type=str,
-        default=None,
-        help="Path to model_config.yaml for provider model defaults",
-    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Generate command
@@ -512,7 +462,7 @@ def main() -> int:
         "-m",
         type=str,
         default=None,
-        help="Model to use (provider-specific, uses default if not specified)",
+        help="Model to use (provider-specific). Required — there is no default.",
     )
     gen_parser.add_argument(
         "--size",
@@ -568,7 +518,7 @@ def main() -> int:
         "-m",
         type=str,
         default=None,
-        help="Model override (default: gemini-3-pro-image-preview)",
+        help="Gemini model to use. Required — there is no default.",
     )
     st_parser.add_argument(
         "--size",
@@ -648,7 +598,7 @@ def main() -> int:
         "-m",
         type=str,
         default=None,
-        help="Model to use (provider-specific, uses default if not specified)",
+        help="Model to use (provider-specific). Required — there is no default.",
     )
     cc_parser.add_argument(
         "--size",

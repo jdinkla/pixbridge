@@ -8,7 +8,6 @@ import yaml
 
 from pixbridge.cli import (
     _batch_style_transfer,
-    _load_config_from_args,
     check_command,
     generate_command,
     load_prompt_from_yaml,
@@ -116,7 +115,6 @@ class TestGenerateCommand:
     def test_generates_image(self, mock_cls, tmp_path):
         mock_client = MagicMock()
         mock_client.provider.capabilities = MagicMock(
-            default_model="gemini-3-pro-image-preview",
             default_quality="medium",
         )
         mock_client.generate_image.return_value = tmp_path / "out" / "image.png"
@@ -135,7 +133,7 @@ class TestGenerateCommand:
             prompt_file=str(prompt_file),
             output=str(tmp_path / "out"),
             provider="gemini",
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,
@@ -177,7 +175,7 @@ class TestGenerateCommand:
             prompt_file=str(prompt_file),
             output=None,
             provider="gemini",
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,
@@ -190,7 +188,6 @@ class TestGenerateCommand:
     def test_openai_quality_param(self, mock_cls, tmp_path):
         mock_client = MagicMock()
         mock_client.provider.capabilities = MagicMock(
-            default_model="gpt-image-2",
             default_quality="low",
         )
         mock_client.generate_image.return_value = tmp_path / "image.png"
@@ -209,7 +206,7 @@ class TestGenerateCommand:
             prompt_file=str(prompt_file),
             output=str(tmp_path),
             provider="openai",
-            model=None,
+            model="gpt-image-2",
             size="1K",
             aspect_ratio="1:1",
             quality="high",
@@ -345,7 +342,7 @@ class TestStyleTransferCommand:
             input=str(tmp_path / "nope.png"),
             style="anime-dark",
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size=None,
             aspect_ratio=None,
             batch=False,
@@ -372,7 +369,7 @@ class TestStyleTransferCommand:
             input=str(input_img),
             style="anime-dark",
             output=str(tmp_path / "output.png"),
-            model=None,
+            model="gemini-3-pro-image-preview",
             size=None,
             aspect_ratio=None,
             batch=False,
@@ -397,7 +394,7 @@ class TestStyleTransferCommand:
             input=str(input_img),
             style="anime-dark",
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size=None,
             aspect_ratio=None,
             batch=False,
@@ -419,7 +416,7 @@ class TestStyleTransferCommand:
             input=str(input_file),
             style="anime-dark",
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size=None,
             aspect_ratio=None,
             batch=True,
@@ -437,7 +434,7 @@ class TestStyleTransferCommand:
             input=str(tmp_path),
             style="anime-dark",
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size=None,
             aspect_ratio=None,
             batch=False,
@@ -605,63 +602,7 @@ class TestInferAspectRatio:
         assert _infer_aspect_ratio(w, h) == expected
 
 
-# --- _load_config_from_args ---
-
-
-class TestLoadConfigFromArgs:
-    def test_returns_none_without_config_or_default(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)  # no model_config.yaml here
-        args = argparse.Namespace(config=None)
-        assert _load_config_from_args(args) is None
-
-    def test_loads_explicit_config(self, tmp_path):
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "my-model"}},
-        }))
-        args = argparse.Namespace(config=str(config_file))
-        result = _load_config_from_args(args)
-        assert result["providers"]["gemini"]["default_model"] == "my-model"
-
-    def test_missing_explicit_config_exits(self, tmp_path):
-        args = argparse.Namespace(config=str(tmp_path / "nope.yaml"))
-        with pytest.raises(SystemExit):
-            _load_config_from_args(args)
-
-    def test_invalid_explicit_config_exits(self, tmp_path):
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({"bad": "data"}))
-        args = argparse.Namespace(config=str(config_file))
-        with pytest.raises(SystemExit):
-            _load_config_from_args(args)
-
-    def test_auto_discovers_default_config(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        default_cfg = tmp_path / "model_config.yaml"
-        default_cfg.write_text(yaml.dump({
-            "providers": {"openai": {"default_model": "auto-model"}},
-        }))
-        args = argparse.Namespace(config=None)
-        result = _load_config_from_args(args)
-        assert result["providers"]["openai"]["default_model"] == "auto-model"
-
-    def test_explicit_config_overrides_default(self, tmp_path, monkeypatch):
-        monkeypatch.chdir(tmp_path)
-        # default in cwd
-        (tmp_path / "model_config.yaml").write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "from-default"}},
-        }))
-        # explicit elsewhere
-        explicit = tmp_path / "custom.yaml"
-        explicit.write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "from-explicit"}},
-        }))
-        args = argparse.Namespace(config=str(explicit))
-        result = _load_config_from_args(args)
-        assert result["providers"]["gemini"]["default_model"] == "from-explicit"
-
-
-# --- config model resolution in generate_command ---
+# --- model resolution in generate_command ---
 
 
 class TestGenerateConfigModel:
@@ -677,50 +618,13 @@ class TestGenerateConfigModel:
         return prompt_file
 
     @patch("pixbridge.cli.ImageClient")
-    def test_config_model_used_when_no_flag(self, mock_cls, tmp_path):
+    def test_cli_model_used(self, mock_cls, tmp_path):
         mock_client = MagicMock()
         mock_client.provider.capabilities = MagicMock(
-            default_model="hardcoded-default",
             default_quality="medium",
         )
         mock_client.generate_image.return_value = tmp_path / "image.png"
         mock_cls.return_value = mock_client
-
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "config-model"}},
-        }))
-
-        args = argparse.Namespace(
-            prompt_file=str(self._make_prompt_file(tmp_path)),
-            output=str(tmp_path),
-            provider="gemini",
-            model=None,
-            size="1K",
-            aspect_ratio="16:9",
-            quality=None,
-            config=str(config_file),
-        )
-        code = generate_command(args)
-
-        assert code == 0
-        call_kwargs = mock_client.generate_image.call_args[1]
-        assert call_kwargs["model"] == "config-model"
-
-    @patch("pixbridge.cli.ImageClient")
-    def test_cli_model_overrides_config(self, mock_cls, tmp_path):
-        mock_client = MagicMock()
-        mock_client.provider.capabilities = MagicMock(
-            default_model="hardcoded-default",
-            default_quality="medium",
-        )
-        mock_client.generate_image.return_value = tmp_path / "image.png"
-        mock_cls.return_value = mock_client
-
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "config-model"}},
-        }))
 
         args = argparse.Namespace(
             prompt_file=str(self._make_prompt_file(tmp_path)),
@@ -730,7 +634,6 @@ class TestGenerateConfigModel:
             size="1K",
             aspect_ratio="16:9",
             quality=None,
-            config=str(config_file),
         )
         code = generate_command(args)
 
@@ -740,10 +643,9 @@ class TestGenerateConfigModel:
 
     @patch("pixbridge.cli.ImageClient")
     def test_no_model_without_config_errors(self, mock_cls, tmp_path, monkeypatch, capsys):
-        # The hardcoded-provider-default fallback is gone: with neither --model
-        # nor a config-provided model, the CLI now errors out instead of
-        # silently using a provider default.
-        monkeypatch.chdir(tmp_path)  # no model_config.yaml here
+        # A model is now strictly required: with no --model the CLI errors out
+        # instead of falling back to any default.
+        monkeypatch.chdir(tmp_path)
         mock_client = MagicMock()
         mock_client.provider.capabilities = MagicMock(
             default_quality="medium",
@@ -759,31 +661,12 @@ class TestGenerateConfigModel:
             size="1K",
             aspect_ratio="16:9",
             quality=None,
-            config=None,
         )
         code = generate_command(args)
 
         assert code == 1
-        assert "No model specified" in capsys.readouterr().err
+        assert "--model is required" in capsys.readouterr().err
         mock_client.generate_image.assert_not_called()
-
-
-# --- config flag via main() argument parsing ---
-
-
-class TestConfigArgParsing:
-    @patch("pixbridge.cli.providers_command", return_value=0)
-    def test_config_flag_parsed(self, mock_cmd, tmp_path):
-        config_file = tmp_path / "config.yaml"
-        config_file.write_text(yaml.dump({
-            "providers": {"gemini": {"default_model": "my-model"}},
-        }))
-        with patch("sys.argv", ["pixbridge", "--config", str(config_file), "providers"]):
-            code = main()
-        assert code == 0
-        # Verify config was passed through
-        call_args = mock_cmd.call_args[0][0]
-        assert call_args.config == str(config_file)
 
 
 # --- check_command ---

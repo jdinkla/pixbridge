@@ -127,6 +127,7 @@ class GeminiProvider(BaseImageProvider):
 
         # Validate parameters (raises if no model was specified)
         self.validate_params(model=model, size=size, aspect_ratio=aspect_ratio)
+        assert model is not None  # narrowed: validate_params raises when None
 
         # Generate the image
         client = self._get_client()
@@ -193,6 +194,7 @@ class GeminiProvider(BaseImageProvider):
         temperature = temperature if temperature is not None else 0.1
 
         self.validate_params(model=model, size=size, aspect_ratio=aspect_ratio)
+        assert model is not None  # narrowed: validate_params raises when None
 
         # Load reference images as PIL (cap at 6 for optimal identity focus)
         pil_refs = []

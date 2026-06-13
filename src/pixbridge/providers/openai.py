@@ -321,6 +321,7 @@ class OpenAIProvider(BaseImageProvider):
 
         # Validate parameters
         self.validate_params(model=model, size=size, quality=quality)
+        assert model is not None  # narrowed: validate_params raises when None
         output_format = self._normalize_output_format(output_format)
 
         # Truncate prompt if it exceeds provider limit
@@ -452,6 +453,7 @@ class OpenAIProvider(BaseImageProvider):
             raise RuntimeError("OpenAI provider has no default size configured")
 
         self.validate_params(model=model, size=size, quality=quality)
+        assert model is not None  # narrowed: validate_params raises when None
         output_format = self._normalize_output_format(output_format)
 
         # Truncate prompt if needed (same logic as generate())

@@ -221,7 +221,6 @@ class TestConsistencyCheckCommand:
 
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="gemini-3-pro-image-preview",
             default_quality=None,
         )
         mock_get_provider.return_value = mock_provider
@@ -240,7 +239,7 @@ class TestConsistencyCheckCommand:
             provider="gemini",
             count=3,
             output=str(tmp_path / "out"),
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,
@@ -260,7 +259,6 @@ class TestConsistencyCheckCommand:
 
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="model",
             default_quality=None,
         )
         mock_get_provider.return_value = mock_provider
@@ -279,7 +277,7 @@ class TestConsistencyCheckCommand:
             provider="gemini",
             count=3,
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,
@@ -327,7 +325,6 @@ class TestConsistencyCheckCommand:
 
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="gpt-image-2",
             default_quality="low",
         )
         mock_get_provider.return_value = mock_provider
@@ -346,7 +343,7 @@ class TestConsistencyCheckCommand:
             provider="openai",
             count=2,
             output=str(tmp_path),
-            model=None,
+            model="gpt-image-2",
             size="1K",
             aspect_ratio="16:9",
             quality="low",
@@ -367,7 +364,6 @@ class TestConsistencyCheckCommand:
 
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="model",
             default_quality=None,
         )
         mock_get_provider.return_value = mock_provider
@@ -386,7 +382,7 @@ class TestConsistencyCheckCommand:
             provider="gemini",
             count=1,
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,
@@ -410,7 +406,6 @@ class TestConsistencyCheckCommand:
 
         mock_provider = MagicMock()
         mock_provider.capabilities = MagicMock(
-            default_model="model",
             default_quality=None,
         )
         mock_get_provider.return_value = mock_provider
@@ -429,7 +424,7 @@ class TestConsistencyCheckCommand:
             provider="gemini",
             count=1,
             output=None,
-            model=None,
+            model="gemini-3-pro-image-preview",
             size="1K",
             aspect_ratio="16:9",
             quality=None,

@@ -26,10 +26,13 @@ uv sync
 
 ```bash
 pixbridge providers                          # List available providers
-pixbridge generate prompt.yaml               # Generate from YAML prompt
-pixbridge style-transfer img.png --style anime-dark
-pixbridge consistency-check anime-dark -n 5
+pixbridge generate prompt.yaml --model gemini-3-pro-image-preview
+pixbridge style-transfer img.png --style anime-dark --model gemini-3-pro-image-preview
+pixbridge consistency-check anime-dark -n 5 --model gemini-3-pro-image-preview
 pixbridge check output/                      # Check image integrity
+
+# --model is required on generate / style-transfer / consistency-check —
+# there is no default model.
 ```
 
 ## Usage as library
@@ -46,7 +49,9 @@ prompt = ImagePrompt(
         key_requirements=["photorealistic"],
     ),
 )
-path = client.generate_image(prompt, output_dir="output")
+path = client.generate_image(
+    prompt, output_dir="output", model="gemini-3-pro-image-preview"
+)  # model is required — there is no default
 ```
 
 ## Providers
@@ -107,17 +112,14 @@ pixbridge style-transfer img.png --style anime-dark --styles-dir ./other-styles
 client = ImageClient(provider="gemini", style_presets_dir="~/my-styles")
 ```
 
-## Configuration
+## Model selection
 
-Per-provider defaults live in `model_config.yaml` (auto-discovered from the current working directory, or pass `--config path/to/file.yaml`). Resolution order: `--model` CLI flag > config file > hardcoded provider default.
+There is no default model. A model must always be specified explicitly:
 
-```yaml
-providers:
-  openai:
-    default_model: gpt-image-2
-  gemini:
-    default_model: gemini-3.1-flash-image-preview
-```
+- **CLI:** pass `--model <name>` (e.g. `--model gpt-image-2`). Commands fail with `--model is required` if omitted.
+- **Library:** pass `model=` to the `ImageClient` generation methods.
+
+This is deliberate — model names change often, so the library does not ship a baked-in default that could silently go stale. A model string flows straight through to the provider SDK, except where a provider declares a `supported_models` allowlist (OpenAI: `gpt-image-2`), which is validated locally before any API call.
 
 ## Testing
 
