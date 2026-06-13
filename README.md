@@ -1,5 +1,9 @@
 # pixbridge
 
+[![CI](https://github.com/jdinkla/pixbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/jdinkla/pixbridge/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+
 Multi-provider AI image generation library supporting Gemini, OpenAI, and xAI.
 
 ## Features
@@ -96,3 +100,14 @@ providers:
 ```bash
 just test
 ```
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
+development setup and PR guidelines. To report a security issue, see
+[SECURITY.md](SECURITY.md).
+
+## License
+
+Licensed under the [Apache License 2.0](LICENSE). See the [NOTICE](NOTICE) file
+for attribution requirements.
