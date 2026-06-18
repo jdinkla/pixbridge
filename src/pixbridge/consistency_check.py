@@ -50,6 +50,11 @@ class ConsistencyResult:
 def build_consistency_prompt(scene: str, style_text: str) -> ImagePrompt:
     """Combine a test scene with style text into an ImagePrompt.
 
+    The scene is stated imperatively and the style block is explicitly scoped to
+    "look only", so a long or subject-heavy style preset cannot hijack the scene's
+    subject and action. Without this framing, a verbose style (e.g. one that
+    repeatedly names creatures or actions) outweighs a short scene and overrides it.
+
     Args:
         scene: Scene description.
         style_text: Style prompt text (from preset or file).
@@ -57,7 +62,14 @@ def build_consistency_prompt(scene: str, style_text: str) -> ImagePrompt:
     Returns:
         ImagePrompt ready for generation.
     """
-    full_prompt = f"{scene}\n\nVisual style:\n{style_text}"
+    full_prompt = (
+        f"Depict exactly this scene: {scene}\n\n"
+        "Render it in the following visual style. The style governs only the look "
+        "— medium, palette, lighting, texture, and composition — not the subject "
+        "or action, which are set by the scene above:\n"
+        f"{style_text}\n\n"
+        "Keep the subject and action of the scene; apply the style only to how it looks."
+    )
     return ImagePrompt(
         full_prompt=full_prompt,
         generation_notes=GenerationNotes(
@@ -137,10 +149,7 @@ def run_consistency_check(
 
     max_workers = min(count, 5)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(_generate_one, i): i
-            for i in range(1, count + 1)
-        }
+        futures = {executor.submit(_generate_one, i): i for i in range(1, count + 1)}
         for future in as_completed(futures):
             idx, path, error = future.result()
             if path is not None:

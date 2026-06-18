@@ -23,7 +23,10 @@ class TestNormalizeStyleLabel:
         assert normalize_style_label("prompts/style-transfer/anime/anime-dark.md") == "anime-dark"
 
     def test_relative_path(self):
-        assert normalize_style_label("./styles/victorian-mystery-anime.md") == "victorian-mystery-anime"
+        assert (
+            normalize_style_label("./styles/victorian-mystery-anime.md")
+            == "victorian-mystery-anime"
+        )
 
     def test_bare_md_extension(self):
         assert normalize_style_label("custom-style.md") == "custom-style"
@@ -44,6 +47,19 @@ class TestBuildConsistencyPrompt:
         prompt = build_consistency_prompt("a forest", "watercolor look")
         assert "a forest" in prompt.full_prompt
         assert "watercolor look" in prompt.full_prompt
+
+    def test_scene_is_stated_imperatively(self):
+        prompt = build_consistency_prompt("a forest", "watercolor look")
+        assert "Depict exactly this scene: a forest" in prompt.full_prompt
+
+    def test_style_is_scoped_to_look_only(self):
+        # The style block must be framed so a subject-heavy preset can't hijack
+        # the scene's subject/action.
+        prompt = build_consistency_prompt("a forest", "watercolor look")
+        assert "governs only the look" in prompt.full_prompt
+        assert "not the subject" in prompt.full_prompt
+        # scene comes before the style block
+        assert prompt.full_prompt.index("a forest") < prompt.full_prompt.index("watercolor look")
 
     def test_aspect_ratio_is_16_9(self):
         prompt = build_consistency_prompt("scene", "style")
