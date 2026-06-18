@@ -2,6 +2,20 @@
 
 All notable changes to pixbridge are documented in this file.
 
+## [0.2.1] - 2026-06-18
+
+### Fixed — style can no longer hijack the consistency-check scene
+
+- `build_consistency_prompt` now states the scene imperatively (`Depict
+  exactly this scene: ...`) and wraps the style block with an explicit scope
+  clause: the style governs only the look (medium, palette, lighting, texture,
+  composition), not the subject or action, which are set by the scene. A
+  trailing reminder reinforces it for recency.
+- Without this, a long or subject-heavy style preset could outweigh a short
+  scene description and override it (e.g. a photoreal-prehistoric preset
+  rendered a mammoth hunt over a neutral test scene). Scene and style text are
+  still both present verbatim — this only reframes, never drops, either input.
+
 ## [0.2.0] - 2026-06-13
 
 ### Changed (breaking) — a model must always be specified
