@@ -2,6 +2,22 @@
 
 All notable changes to pixbridge are documented in this file.
 
+## [0.2.2] - 2026-06-20
+
+### Added — relax OpenAI output moderation
+
+- The OpenAI provider now sends `moderation="low"` on `images.generate` by
+  default. A new `ProviderCapabilities.default_moderation` (set to `"low"` for
+  OpenAI) is resolved in `generate()`, which also accepts an optional
+  `moderation` argument to override it (`"auto"` restores the strict default).
+  This loosens OpenAI's stricter API-side *output* moderation so dark or
+  literary content (violence, peril) is not over-blocked relative to the
+  consumer app.
+- Applies to text-to-image only: `images.edit` (the reference-image /
+  identity-locking path used by `generate_with_references`) does not accept a
+  `moderation` parameter, so reference-based generations still use the API
+  default.
+
 ## [0.2.1] - 2026-06-18
 
 ### Fixed — style can no longer hijack the consistency-check scene

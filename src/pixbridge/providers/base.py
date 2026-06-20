@@ -55,15 +55,16 @@ class ProviderCapabilities:
     default_size: str | None = None
     default_aspect_ratio: str | None = None
     default_quality: str | None = None
+    # Output-moderation strictness for providers that expose it (OpenAI
+    # gpt-image: "auto" | "low"). None = don't send the param (provider default).
+    default_moderation: str | None = None
     max_prompt_length: int | None = None  # None = no known limit
     supports_style_transfer: bool = False
     supports_reference_images: bool = False
     # --- capability surface (TASK-42.2) ---
     aspect_size_map: dict[str, str] | None = None
     max_dimension: int | None = None
-    size_validator: Callable[[str], None] | None = field(
-        default=None, repr=False, compare=False
-    )
+    size_validator: Callable[[str], None] | None = field(default=None, repr=False, compare=False)
     size_bucketer: Callable[[int, int], str | None] | None = field(
         default=None, repr=False, compare=False
     )
@@ -101,9 +102,7 @@ class ProviderCapabilities:
             self.size_validator(size)
             return
         if self.sizes and size not in self.sizes:
-            raise ValueError(
-                f"Invalid size '{size}'. Must be one of: {self.sizes}"
-            )
+            raise ValueError(f"Invalid size '{size}'. Must be one of: {self.sizes}")
         # Empty `sizes` and no validator → size is unconstrained (xAI).
 
     def native_size(self, w: int, h: int) -> str | None:
@@ -243,9 +242,7 @@ class BaseImageProvider(ABC):
         Raises:
             NotImplementedError: If the provider doesn't support style transfer.
         """
-        raise NotImplementedError(
-            f"Provider {self.name} does not support style transfer"
-        )
+        raise NotImplementedError(f"Provider {self.name} does not support style transfer")
 
     def generate_with_references(
         self,
@@ -280,9 +277,7 @@ class BaseImageProvider(ABC):
         Raises:
             NotImplementedError: If the provider doesn't support reference images.
         """
-        raise NotImplementedError(
-            f"Provider {self.name} does not support reference images"
-        )
+        raise NotImplementedError(f"Provider {self.name} does not support reference images")
 
     def validate_params(
         self,
@@ -306,14 +301,17 @@ class BaseImageProvider(ABC):
 
         if caps.supported_models is not None and model not in caps.supported_models:
             raise ValueError(
-                f"Invalid model '{model}' for {self.name}. "
-                f"Must be one of: {caps.supported_models}"
+                f"Invalid model '{model}' for {self.name}. Must be one of: {caps.supported_models}"
             )
 
         if size is not None:
             caps.validate_size(size)
 
-        if aspect_ratio is not None and caps.aspect_ratios and aspect_ratio not in caps.aspect_ratios:
+        if (
+            aspect_ratio is not None
+            and caps.aspect_ratios
+            and aspect_ratio not in caps.aspect_ratios
+        ):
             raise ValueError(
                 f"Invalid aspect ratio '{aspect_ratio}' for {self.name}. "
                 f"Must be one of: {caps.aspect_ratios}"

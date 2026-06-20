@@ -66,9 +66,7 @@ def validate_openai_size(size: str) -> None:
     """
     m = _OPENAI_WXH_RE.match(size)
     if not m:
-        raise ValueError(
-            f"Invalid OpenAI size '{size}': expected WxH format like '1152x2048'."
-        )
+        raise ValueError(f"Invalid OpenAI size '{size}': expected WxH format like '1152x2048'.")
     w, h = int(m.group(1)), int(m.group(2))
     if w <= 0 or h <= 0:
         raise ValueError(f"Invalid OpenAI size '{size}': dimensions must be positive.")
@@ -79,8 +77,7 @@ def validate_openai_size(size: str) -> None:
         )
     if max(w, h) > _OPENAI_MAX_DIM:
         raise ValueError(
-            f"Invalid OpenAI size '{size}': max dimension is {_OPENAI_MAX_DIM} "
-            f"(got {max(w, h)})."
+            f"Invalid OpenAI size '{size}': max dimension is {_OPENAI_MAX_DIM} (got {max(w, h)})."
         )
     ratio = Fraction(w, h)
     if ratio < _OPENAI_MIN_RATIO or ratio > _OPENAI_MAX_RATIO:
@@ -112,6 +109,7 @@ OPENAI_CAPABILITIES = ProviderCapabilities(
     default_size="1024x1024",
     default_aspect_ratio="1:1",
     default_quality="low",
+    default_moderation="low",
     max_prompt_length=32000,
     supports_style_transfer=True,
     supports_reference_images=True,
@@ -178,8 +176,15 @@ class OpenAIProvider(BaseImageProvider):
 
     # Section headers in anime prompts, in typical order
     _SECTION_HEADERS = [
-        "GOAL:", "SCENE:", "BLOCKING:", "CHARACTERS IN FRAME:",
-        "SETTING:", "STYLE:", "FIDELITY:", "CONSISTENCY:", "CONSISTENCY LOCK:",
+        "GOAL:",
+        "SCENE:",
+        "BLOCKING:",
+        "CHARACTERS IN FRAME:",
+        "SETTING:",
+        "STYLE:",
+        "FIDELITY:",
+        "CONSISTENCY:",
+        "CONSISTENCY LOCK:",
     ]
     # Sections safe to compress (the three biggest in anime prompts)
     _COMPRESSIBLE_SECTIONS = {"CHARACTERS IN FRAME:", "SETTING:", "STYLE:"}
@@ -222,15 +227,9 @@ class OpenAIProvider(BaseImageProvider):
             sections.append((header, content, compressible))
 
         # Calculate sizes
-        fixed_len = sum(
-            len(h or "") + len(text)
-            for h, text, comp in sections
-            if not comp
-        )
+        fixed_len = sum(len(h or "") + len(text) for h, text, comp in sections if not comp)
         compressible_sections = [
-            (idx, len((h or "") + text))
-            for idx, (h, text, comp) in enumerate(sections)
-            if comp
+            (idx, len((h or "") + text)) for idx, (h, text, comp) in enumerate(sections) if comp
         ]
         total_compressible = sum(size for _, size in compressible_sections)
 
@@ -287,6 +286,7 @@ class OpenAIProvider(BaseImageProvider):
         quality: str | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        moderation: str | None = None,
     ) -> GenerationResult:
         """Generate an image using OpenAI API.
 
@@ -296,6 +296,9 @@ class OpenAIProvider(BaseImageProvider):
             size: Size dimensions. If aspect_ratio is provided, it takes precedence.
             aspect_ratio: Aspect ratio (maps to OpenAI size parameter).
             quality: Quality level (low, medium, high, auto).
+            moderation: Output-moderation strictness ("auto" | "low"). "low"
+                relaxes OpenAI's stricter default so dark/literary content is
+                not over-blocked; None sends nothing (the API default applies).
             output_format: Output image format ('png', 'jpeg', 'webp'). Defaults
                 to 'png' on the OpenAI side when None.
             output_compression: Compression level 0-100 for jpeg/webp. Ignored
@@ -309,6 +312,7 @@ class OpenAIProvider(BaseImageProvider):
         quality = quality or caps.default_quality
         if quality is None:
             raise RuntimeError("OpenAI provider has no default quality configured")
+        moderation = moderation or caps.default_moderation
 
         # Determine size: aspect_ratio takes precedence if provided
         if aspect_ratio:
@@ -345,11 +349,13 @@ class OpenAIProvider(BaseImageProvider):
         # SDK rejects None for these and png ignores compression entirely.
         extra_kwargs: dict = {}
         if output_format is not None:
-            extra_kwargs["output_format"] = cast(
-                "Literal['png', 'jpeg', 'webp']", output_format
-            )
+            extra_kwargs["output_format"] = cast("Literal['png', 'jpeg', 'webp']", output_format)
         if output_compression is not None and output_format in ("jpeg", "webp"):
             extra_kwargs["output_compression"] = output_compression
+        # Output moderation (gpt-image only): "low" relaxes the stricter API
+        # default so dark/literary content isn't over-blocked. Only sent when set.
+        if moderation is not None:
+            extra_kwargs["moderation"] = cast("Literal['low', 'auto']", moderation)
 
         # Generate the image. Size is validated rule-based above and passed as
         # an arbitrary WxH string — the SDK accepts any valid OpenAI size.
@@ -381,9 +387,7 @@ class OpenAIProvider(BaseImageProvider):
         else:
             raise ValueError("No image data in OpenAI response")
 
-        mime_type = self._OUTPUT_FORMAT_TO_MIME.get(
-            output_format or "png", "image/png"
-        )
+        mime_type = self._OUTPUT_FORMAT_TO_MIME.get(output_format or "png", "image/png")
         return GenerationResult(
             image_data=image_data,
             mime_type=mime_type,
@@ -480,15 +484,11 @@ class OpenAIProvider(BaseImageProvider):
                 raise FileNotFoundError(f"Reference image not found: {ref_path}")
             existing_refs.append(ref_path)
         if not existing_refs:
-            raise ValueError(
-                "generate_with_references called with empty reference_images"
-            )
+            raise ValueError("generate_with_references called with empty reference_images")
 
         extra_kwargs: dict = {}
         if output_format is not None:
-            extra_kwargs["output_format"] = cast(
-                "Literal['png', 'jpeg', 'webp']", output_format
-            )
+            extra_kwargs["output_format"] = cast("Literal['png', 'jpeg', 'webp']", output_format)
         if output_compression is not None and output_format in ("jpeg", "webp"):
             extra_kwargs["output_compression"] = output_compression
 
@@ -525,9 +525,7 @@ class OpenAIProvider(BaseImageProvider):
         else:
             raise ValueError("No image data in OpenAI edit response")
 
-        mime_type = self._OUTPUT_FORMAT_TO_MIME.get(
-            output_format or "png", "image/png"
-        )
+        mime_type = self._OUTPUT_FORMAT_TO_MIME.get(output_format or "png", "image/png")
         return GenerationResult(
             image_data=image_data,
             mime_type=mime_type,
