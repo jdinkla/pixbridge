@@ -113,7 +113,12 @@ class ImageClient:
         return resolved_size, aspect_ratio
 
     def _log_usage(
-        self, method: str, duration_s: float, result: GenerationResult,
+        self,
+        method: str,
+        duration_s: float,
+        result: GenerationResult,
+        task: str | None = None,
+        subject: str | None = None,
     ) -> None:
         """Log an image generation API call to the usage JSONL file."""
         if self.usage_log is None:
@@ -125,9 +130,11 @@ class ImageClient:
             "provider": result.provider,
             "model": result.model,
             "method": method,
-            "task": "image",
+            "task": task or "image",
             "duration_s": round(duration_s, 3),
         }
+        if subject is not None:
+            entry["subject"] = subject
         entry.update(result.metadata)
         log_usage(self.usage_log, entry)
 
@@ -141,6 +148,8 @@ class ImageClient:
         quality: str | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        usage_task: str | None = None,
+        usage_subject: str | None = None,
     ) -> Path:
         """Generate an image from a prompt and save it.
 
@@ -155,6 +164,12 @@ class ImageClient:
                 may ignore if unsupported (gemini/xai/vertex always emit png).
             output_compression: Compression level 0-100 for jpeg/webp. Ignored
                 for png and unsupported providers.
+            usage_task: Optional task label for the usage-log entry (e.g.
+                "refs"). Defaults to "image" when omitted.
+            usage_subject: Optional subject for the usage-log entry, typically
+                the target filename (e.g. "ref-alice.png" or "scene-001.png").
+                Omitted from the entry when not given. Neither field affects
+                generation.
 
         Returns:
             Path to the saved image file.
@@ -170,10 +185,7 @@ class ImageClient:
         # Auto-promote to references when client has defaults configured and the
         # active provider supports them. Slide-pipeline use case: --ref-image is
         # set globally and every slide should use the same anchors.
-        if (
-            self.default_reference_images
-            and self.provider.capabilities.supports_reference_images
-        ):
+        if self.default_reference_images and self.provider.capabilities.supports_reference_images:
             t0 = time.monotonic()
             result = self.provider.generate_with_references(
                 prompt=prompt,
@@ -186,7 +198,11 @@ class ImageClient:
                 output_compression=output_compression,
             )
             self._log_usage(
-                "generate_image_with_references", time.monotonic() - t0, result,
+                "generate_image_with_references",
+                time.monotonic() - t0,
+                result,
+                task=usage_task,
+                subject=usage_subject,
             )
         else:
             t0 = time.monotonic()
@@ -199,7 +215,13 @@ class ImageClient:
                 output_format=output_format,
                 output_compression=output_compression,
             )
-            self._log_usage("generate_image", time.monotonic() - t0, result)
+            self._log_usage(
+                "generate_image",
+                time.monotonic() - t0,
+                result,
+                task=usage_task,
+                subject=usage_subject,
+            )
 
         # Save the image
         image_path = self._save_image(result, output_dir)
@@ -240,6 +262,8 @@ class ImageClient:
         temperature: float | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        usage_task: str | None = None,
+        usage_subject: str | None = None,
     ) -> Path:
         """Generate an image with reference images for identity consistency.
 
@@ -258,6 +282,11 @@ class ImageClient:
             aspect_ratio: Aspect ratio for the image.
             quality: Quality level (OpenAI only).
             temperature: Generation temperature (lower = more consistent).
+            usage_task: Optional task label for the usage-log entry (e.g.
+                "refs"). Defaults to "image" when omitted.
+            usage_subject: Optional subject for the usage-log entry, typically
+                the target filename. Omitted from the entry when not given.
+                Neither field affects generation.
 
         Returns:
             Path to the saved image file.
@@ -306,7 +335,9 @@ class ImageClient:
                 output_compression=output_compression,
             )
             method = "generate_image"
-        self._log_usage(method, time.monotonic() - t0, result)
+        self._log_usage(
+            method, time.monotonic() - t0, result, task=usage_task, subject=usage_subject
+        )
 
         image_path = self._save_image(result, output_dir)
         return image_path
@@ -319,6 +350,8 @@ class ImageClient:
         model: str | None = None,
         size: str | None = None,
         aspect_ratio: str | None = None,
+        usage_task: str | None = None,
+        usage_subject: str | None = None,
     ) -> Path:
         """Apply a visual style to an existing image.
 
@@ -330,6 +363,11 @@ class ImageClient:
             model: Model override for the provider.
             size: Size preset (1K, 2K).
             aspect_ratio: Aspect ratio for the output.
+            usage_task: Optional task label for the usage-log entry (e.g.
+                "refs"). Defaults to "image" when omitted.
+            usage_subject: Optional subject for the usage-log entry, typically
+                the target filename. Omitted from the entry when not given.
+                Neither field affects generation.
 
         Returns:
             Path to the saved styled image.
@@ -362,7 +400,13 @@ class ImageClient:
             size=size,
             aspect_ratio=aspect_ratio,
         )
-        self._log_usage("style_transfer_image", time.monotonic() - t0, result)
+        self._log_usage(
+            "style_transfer_image",
+            time.monotonic() - t0,
+            result,
+            task=usage_task,
+            subject=usage_subject,
+        )
 
         # Determine output path — default: overwrite in place
         if output_path is None:
@@ -427,8 +471,7 @@ class ImageClient:
         if not preset_dir.exists():
             return []
         return sorted(
-            str(p.relative_to(preset_dir).with_suffix(""))
-            for p in preset_dir.rglob("*.md")
+            str(p.relative_to(preset_dir).with_suffix("")) for p in preset_dir.rglob("*.md")
         )
 
     @staticmethod

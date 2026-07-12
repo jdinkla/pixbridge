@@ -130,8 +130,12 @@ class TestGenerateImage:
         client._provider = mock_provider
 
         client.generate_image(
-            sample_prompt, tmp_path,
-            model="m", size="2K", aspect_ratio="4:3", quality="high",
+            sample_prompt,
+            tmp_path,
+            model="m",
+            size="2K",
+            aspect_ratio="4:3",
+            quality="high",
         )
 
         call_kwargs = mock_provider.generate.call_args[1]
@@ -245,7 +249,10 @@ class TestGenerateWithReferencesSizeResolution:
 
         refs = [tmp_path / "ref.png"]
         client.generate_image_with_references(
-            sample_prompt, refs, tmp_path / "output", size="2160p",
+            sample_prompt,
+            refs,
+            tmp_path / "output",
+            size="2160p",
         )
 
         call_kwargs = mock_provider.generate_with_references.call_args[1]
@@ -260,7 +267,10 @@ class TestGenerateWithReferencesSizeResolution:
 
         refs = [tmp_path / "ref.png"]
         client.generate_image_with_references(
-            sample_prompt, refs, tmp_path / "output", size="1920x1080",
+            sample_prompt,
+            refs,
+            tmp_path / "output",
+            size="1920x1080",
         )
 
         call_kwargs = mock_provider.generate_with_references.call_args[1]
@@ -275,7 +285,10 @@ class TestGenerateWithReferencesSizeResolution:
         client._provider = mock_provider
 
         client.generate_image_with_references(
-            sample_prompt, [], tmp_path / "output", size="1080p",
+            sample_prompt,
+            [],
+            tmp_path / "output",
+            size="1080p",
         )
 
         call_kwargs = mock_provider.generate.call_args[1]
@@ -292,7 +305,9 @@ class TestGenerateImageWithReferences:
 
         refs = [tmp_path / "ref1.png"]
         path = client.generate_image_with_references(
-            sample_prompt, refs, tmp_path / "output",
+            sample_prompt,
+            refs,
+            tmp_path / "output",
         )
 
         assert path.exists()
@@ -309,7 +324,9 @@ class TestGenerateImageWithReferences:
         refs = [tmp_path / "ref1.png"]
         with pytest.raises(ValueError, match="does not support reference"):
             client.generate_image_with_references(
-                sample_prompt, refs, tmp_path / "output",
+                sample_prompt,
+                refs,
+                tmp_path / "output",
             )
         mock_provider.generate.assert_not_called()
         mock_provider.generate_with_references.assert_not_called()
@@ -321,7 +338,9 @@ class TestGenerateImageWithReferences:
         client._provider = mock_provider
 
         client.generate_image_with_references(
-            sample_prompt, [], tmp_path / "output",
+            sample_prompt,
+            [],
+            tmp_path / "output",
         )
 
         mock_provider.generate.assert_called_once()
@@ -334,7 +353,10 @@ class TestGenerateImageWithReferences:
 
         refs = [tmp_path / "ref.png"]
         client.generate_image_with_references(
-            sample_prompt, refs, tmp_path / "output", temperature=0.3,
+            sample_prompt,
+            refs,
+            tmp_path / "output",
+            temperature=0.3,
         )
 
         call_kwargs = mock_provider.generate_with_references.call_args[1]
@@ -585,6 +607,101 @@ class TestLogUsage:
         assert entry["provider"] == "mock"
         assert entry["method"] == "generate_image"
         assert "duration_s" in entry
+
+    @patch("pixbridge._usage_log.log_usage")
+    def test_default_task_is_image_without_subject(
+        self, mock_log, sample_prompt, tiny_png_bytes, tmp_path
+    ):
+        client = ImageClient(usage_log=tmp_path / "usage.jsonl")
+        mock_provider = _make_provider()
+        mock_provider.generate.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(sample_prompt, tmp_path)
+
+        entry = mock_log.call_args[0][1]
+        assert entry["task"] == "image"
+        assert "subject" not in entry
+
+    @patch("pixbridge._usage_log.log_usage")
+    def test_usage_task_and_subject_logged(self, mock_log, sample_prompt, tiny_png_bytes, tmp_path):
+        client = ImageClient(usage_log=tmp_path / "usage.jsonl")
+        mock_provider = _make_provider()
+        mock_provider.generate.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(
+            sample_prompt, tmp_path, usage_task="refs", usage_subject="ref-alice.png"
+        )
+
+        entry = mock_log.call_args[0][1]
+        assert entry["task"] == "refs"
+        assert entry["subject"] == "ref-alice.png"
+
+    @patch("pixbridge._usage_log.log_usage")
+    def test_usage_task_and_subject_with_references(
+        self, mock_log, sample_prompt, tiny_png_bytes, tmp_path
+    ):
+        client = ImageClient(usage_log=tmp_path / "usage.jsonl")
+        mock_provider = _make_provider(supports_reference_images=True)
+        mock_provider.generate_with_references.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image_with_references(
+            sample_prompt,
+            [tmp_path / "ref.png"],
+            tmp_path / "out",
+            usage_task="refs",
+            usage_subject="ref-bob--wounded.png",
+        )
+
+        entry = mock_log.call_args[0][1]
+        assert entry["task"] == "refs"
+        assert entry["subject"] == "ref-bob--wounded.png"
+
+    @patch("pixbridge._usage_log.log_usage")
+    def test_usage_task_and_subject_via_default_reference_promotion(
+        self, mock_log, sample_prompt, tiny_png_bytes, tmp_path
+    ):
+        ref = tmp_path / "anchor.png"
+        Image.new("RGB", (10, 10)).save(ref)
+        client = ImageClient(usage_log=tmp_path / "usage.jsonl", default_reference_images=[ref])
+        mock_provider = _make_provider(supports_reference_images=True)
+        mock_provider.generate_with_references.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(
+            sample_prompt, tmp_path, usage_task="refs", usage_subject="ref-carol.png"
+        )
+
+        entry = mock_log.call_args[0][1]
+        assert entry["method"] == "generate_image_with_references"
+        assert entry["task"] == "refs"
+        assert entry["subject"] == "ref-carol.png"
+
+    @patch("pixbridge._usage_log.log_usage")
+    def test_usage_task_and_subject_style_transfer(self, mock_log, tiny_png_bytes, tmp_path):
+        client = ImageClient(usage_log=tmp_path / "usage.jsonl")
+        mock_provider = _make_provider(supports_style_transfer=True)
+        mock_provider.style_transfer.return_value = GenerationResult(
+            image_data=tiny_png_bytes,
+            mime_type="image/png",
+            provider="mock",
+            model="m",
+            metadata={},
+        )
+        client._provider = mock_provider
+
+        input_img = tmp_path / "input.png"
+        Image.new("RGB", (10, 10)).save(input_img)
+
+        client.style_transfer_image(
+            input_img, "raw style", usage_task="refs", usage_subject="ref-styled.png"
+        )
+
+        entry = mock_log.call_args[0][1]
+        assert entry["task"] == "refs"
+        assert entry["subject"] == "ref-styled.png"
 
     @patch("pixbridge._usage_log.log_usage")
     def test_logs_style_transfer(self, mock_log, tiny_png_bytes, tmp_path):

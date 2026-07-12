@@ -2,6 +2,23 @@
 
 All notable changes to pixbridge are documented in this file.
 
+## [0.2.3] - 2026-07-12
+
+### Added — task label and subject in usage-log entries
+
+- `ImageClient.generate_image`, `generate_image_with_references`, and
+  `style_transfer_image` accept two new optional keyword arguments,
+  `usage_task` and `usage_subject`, that only affect the usage-log entry:
+  `usage_task` overrides the entry's `task` field (default remains
+  `"image"`), and `usage_subject` adds a `subject` field, typically the
+  caller's deterministic target filename (e.g. `ref-alice.png`,
+  `scene-001.png`). When `usage_subject` is omitted the field is absent, so
+  existing log consumers and call sites are unaffected.
+- Motivation: consumers rename the UUID temp file after generation, so the
+  log had no way to tie an entry to its output image — reference-sheet
+  generations were indistinguishable from story frames, and a sheet that was
+  generated but never consumed appeared nowhere in the log.
+
 ## [0.2.2] - 2026-06-20
 
 ### Added — relax OpenAI output moderation
