@@ -50,7 +50,7 @@ class ProviderCapabilities:
     # Closed allowlist of accepted model strings. ``None`` means no restriction
     # — any model flows through to the provider SDK (the default pass-through
     # behavior). A non-empty list rejects unknown models locally before any API
-    # call (OpenAI: gpt-image-2 only).
+    # call (OpenAI: GPT Image 2 and 2.5).
     supported_models: list[str] | None = None
     default_size: str | None = None
     default_aspect_ratio: str | None = None

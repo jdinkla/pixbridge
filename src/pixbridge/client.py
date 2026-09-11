@@ -159,7 +159,7 @@ class ImageClient:
             model: Model to use (provider-specific). Uses provider default if not specified.
             size: Size preset or dimensions. Uses provider default if not specified.
             aspect_ratio: Aspect ratio for the image.
-            quality: Quality level (OpenAI only: low, medium, high, auto).
+            quality: Quality level (OpenAI only: low, medium, high, auto; GPT Image 2.5 also xhigh, max).
             output_format: Output image format ('png', 'jpeg', 'webp'). Provider
                 may ignore if unsupported (gemini/xai/vertex always emit png).
             output_compression: Compression level 0-100 for jpeg/webp. Ignored

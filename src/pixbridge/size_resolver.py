@@ -37,7 +37,7 @@ def _resolve_wxh(w: int, h: int, provider: str) -> tuple[str | None, str]:
     no size.
 
     For OpenAI the WxH is validated against gpt-image-2's actual rules (both
-    dims divisible by 16, ratio in [1:3, 3:1], max dim 3840); invalid sizes
+    dims divisible by 16, ratio in [1:3, 3:1], max dim 3840, total pixels 655360-8294400); invalid sizes
     raise ``ValueError`` rather than being silently snapped to the nearest
     supported size — silent rewrites masked a bug where 9:16 requests were
     downgraded to 3:4.

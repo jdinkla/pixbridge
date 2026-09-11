@@ -59,12 +59,12 @@ path = client.generate_image(
 | Provider | Models | Style Transfer | Reference Images |
 |----------|--------|:-:|:-:|
 | Gemini | gemini-3-pro-image-preview | yes | yes |
-| OpenAI | gpt-image-2 | yes | yes |
+| OpenAI | gpt-image-2, gpt-image-2.5-flare, gpt-image-2.5-sunburst | yes | yes |
 | xAI | grok-imagine-image | no | no |
 
-For OpenAI, style transfer and reference images run through `gpt-image-2`'s edits endpoint (a single reference image performs style transfer; multiple references compose) — there is no dedicated "style" parameter.
+For OpenAI, style transfer and reference images run through the image edits endpoint (a single reference image performs style transfer; multiple references compose) — there is no dedicated "style" parameter.
 
-Any model can be selected at runtime with `--model`. The CLI also accepts size presets `720p`, `1080p`, `2160p`, or a raw `WxH` string (resolved per-provider). OpenAI (`gpt-image-2`) validates sizes by rule — any `WxH` where both dimensions are divisible by 16, the ratio is within `[1:3, 3:1]`, and `max(W, H) ≤ 3840` — so true `9:16` (`1152x2048`) and `16:9` (`2048x1152`) work; `1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160` are recommended values surfaced for autocompletion.
+Any model can be selected at runtime with `--model`. The CLI also accepts size presets `720p`, `1080p`, `2160p`, or a raw `WxH` string (resolved per-provider). OpenAI (`gpt-image-2`) validates sizes by rule — any `WxH` where both dimensions are divisible by 16, the ratio is within `[1:3, 3:1]`, and `max(W, H) ≤ 3840`, with 655,360–8,294,400 total pixels — so true `9:16` (`1152x2048`) and `16:9` (`2048x1152`) work; `1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160` are recommended values surfaced for autocompletion.
 
 ### Provider capability surface
 
@@ -119,7 +119,7 @@ There is no default model. A model must always be specified explicitly:
 - **CLI:** pass `--model <name>` (e.g. `--model gpt-image-2`). Commands fail with `--model is required` if omitted.
 - **Library:** pass `model=` to the `ImageClient` generation methods.
 
-This is deliberate — model names change often, so the library does not ship a baked-in default that could silently go stale. A model string flows straight through to the provider SDK, except where a provider declares a `supported_models` allowlist (OpenAI: `gpt-image-2`), which is validated locally before any API call.
+This is deliberate — model names change often, so the library does not ship a baked-in default that could silently go stale. A model string flows straight through to the provider SDK, except where a provider declares a `supported_models` allowlist (OpenAI: `gpt-image-2`, both GPT Image 2.5 aliases and their `2026-09-08` snapshots), which is validated locally before any API call.
 
 ## Testing
 
@@ -137,3 +137,22 @@ development setup and PR guidelines. To report a security issue, see
 
 Licensed under the [Apache License 2.0](LICENSE). See the [NOTICE](NOTICE) file
 for attribution requirements.
+
+
+### GPT Image 2.5
+
+Select `gpt-image-2.5-flare` for fast generation or `gpt-image-2.5-sunburst`
+for precise editing. Both accept `low`, `medium`, `high`, `xhigh`, `max`,
+and `auto` quality. The published `-2026-09-08` snapshots are also supported.
+The library keeps its `low` quality default; no model is chosen automatically.
+GPT Image 2 continues to accept only `low`, `medium`, `high`, and `auto`.
+All three models share the custom-size rules above; resolutions above
+2560×1440 are experimental. Quality controls rendering effort independently
+of dimensions; matching quality names do not guarantee matching per-image cost.
+
+```bash
+pixbridge generate prompt.yaml --provider openai --model gpt-image-2.5-flare --quality low
+pixbridge generate prompt.yaml --provider openai --model gpt-image-2.5-sunburst --quality max --size 2048x1152
+```
+
+Source: [OpenAI image generation documentation](https://developers.openai.com/api/docs/guides/image-generation).

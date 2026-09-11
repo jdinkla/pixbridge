@@ -1,13 +1,17 @@
 """Tests for pixbridge.providers.openai — OpenAIProvider with mocked SDK."""
 
 import base64
+import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import httpx
 import pytest
+from openai import OpenAI
 
 from pixbridge.providers.openai import (
     ASPECT_RATIO_TO_SIZE,
+    OPENAI_IMAGE_25_MODELS,
     OpenAIProvider,
     is_valid_openai_size,
     validate_openai_size,
@@ -47,7 +51,7 @@ class TestOpenAICapabilities:
 
     def test_quality_levels(self, provider):
         caps = provider.capabilities
-        assert caps.quality_levels == ["low", "medium", "high", "auto"]
+        assert caps.quality_levels == ["low", "medium", "high", "xhigh", "max", "auto"]
         assert caps.default_quality == "low"
 
     def test_supports_style_transfer(self, provider):
@@ -59,7 +63,7 @@ class TestOpenAICapabilities:
         assert provider.capabilities.supports_reference_images is True
 
     def test_supported_models_allowlist(self, provider):
-        assert provider.capabilities.supported_models == ["gpt-image-2"]
+        assert provider.capabilities.supported_models == ["gpt-image-2", *OPENAI_IMAGE_25_MODELS]
 
 
 class TestModelAllowlist:
@@ -121,6 +125,8 @@ class TestAspectRatioToSize:
 class TestValidateOpenAISize:
     @pytest.mark.parametrize("size", [
         "1024x1024",
+        "1024x640",    # exact minimum pixel area
+        "2160x3840",   # exact maximum pixel area, portrait
         "1152x2048",   # true 9:16
         "2048x1152",   # true 16:9
         "720x1280",    # rule-based, not in recommended list
@@ -146,6 +152,9 @@ class TestValidateOpenAISize:
         ("1024x1024x1024", "WxH format"),
         ("axb", "WxH format"),
         ("0x1024", "positive"),
+        ("1024x624", "total pixels"),
+        ("3840x2176", "total pixels"),
+        ("3840x3840", "total pixels"),
     ])
     def test_invalid_sizes_raise(self, size, reason_fragment):
         with pytest.raises(ValueError, match=reason_fragment):
@@ -531,3 +540,79 @@ class TestPromptTruncation:
         result = provider.generate(sample_prompt, model="gpt-image-2")
 
         assert result.metadata["prompt_truncated"] is False
+
+
+@pytest.mark.parametrize("model", OPENAI_IMAGE_25_MODELS)
+@pytest.mark.parametrize("quality", ["low", "medium", "high", "xhigh", "max", "auto"])
+@pytest.mark.parametrize("references", [False, True])
+def test_image_25_sdk_requests(provider, sample_prompt, tiny_png_bytes, tmp_path,
+                               model, quality, references):
+    client = MagicMock()
+    provider._client = client
+    endpoint = client.images.edit if references else client.images.generate
+    endpoint.return_value = _make_openai_response(
+        b64_json=base64.b64encode(tiny_png_bytes).decode("ascii")
+    )
+    params = dict(model=model, quality=quality, size="2048x1152")
+    if references:
+        reference = tmp_path / "reference.png"
+        reference.write_bytes(tiny_png_bytes)
+        result = provider.generate_with_references(sample_prompt, [reference], **params)
+    else:
+        result = provider.generate(sample_prompt, **params)
+    assert endpoint.call_args.kwargs["model"] == model
+    assert endpoint.call_args.kwargs["quality"] == quality
+    assert endpoint.call_args.kwargs["size"] == "2048x1152"
+    assert result.model == model
+    assert result.metadata["quality"] == quality
+    assert result.image_data == tiny_png_bytes
+
+
+@pytest.mark.parametrize("quality", ["xhigh", "max"])
+@pytest.mark.parametrize("references", [False, True])
+def test_image_2_rejects_25_quality_before_sdk(provider, sample_prompt, quality, references):
+    provider._client = MagicMock()
+    with pytest.raises(ValueError, match=r"require GPT Image 2\.5"):
+        if references:
+            provider.generate_with_references(sample_prompt, [], model="gpt-image-2", quality=quality)
+        else:
+            provider.generate(sample_prompt, model="gpt-image-2", quality=quality)
+    provider._client.images.generate.assert_not_called()
+    provider._client.images.edit.assert_not_called()
+
+
+@pytest.mark.parametrize("model", ["gpt-image-2.5-flare", "gpt-image-2.5-sunburst"])
+@pytest.mark.parametrize("quality", ["xhigh", "max"])
+@pytest.mark.parametrize("references", [False, True])
+def test_image_25_real_sdk_serialization(provider, sample_prompt, tiny_png_bytes,
+                                       tmp_path, model, quality, references):
+    """Older SDK type enums must not prevent valid 2.5 requests on the wire."""
+    requests = []
+
+    def respond(request):
+        requests.append((request.url.path, request.read()))
+        return httpx.Response(200, json={
+            "created": 0,
+            "data": [{"b64_json": base64.b64encode(tiny_png_bytes).decode("ascii")}],
+        })
+
+    with OpenAI(api_key="test-key", http_client=httpx.Client(
+        transport=httpx.MockTransport(respond)
+    )) as client:
+        provider._client = client
+        if references:
+            reference = tmp_path / "reference.png"
+            reference.write_bytes(tiny_png_bytes)
+            provider.generate_with_references(sample_prompt, [reference], model=model, quality=quality)
+        else:
+            provider.generate(sample_prompt, model=model, quality=quality)
+    assert len(requests) == 1
+    path, body = requests[0]
+    if references:
+        assert path == "/v1/images/edits"
+        assert f'name="quality"\r\n\r\n{quality}\r\n'.encode() in body
+        assert f'name="model"\r\n\r\n{model}\r\n'.encode() in body
+    else:
+        assert path == "/v1/images/generations"
+        assert json.loads(body)["quality"] == quality
+        assert json.loads(body)["model"] == model

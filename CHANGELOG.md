@@ -2,6 +2,14 @@
 
 All notable changes to pixbridge are documented in this file.
 
+## [Unreleased]
+
+- Support GPT Image 2.5 Flare and Sunburst, including their 2026-09-08 snapshots,
+  in generation and reference editing. Add model-specific `xhigh` and `max`
+  quality validation and expose all six quality options in the CLI.
+- Enforce OpenAI's total pixel limits (655,360–8,294,400) in size validation.
+- Preserve GPT Image 2 support and the existing low-quality default.
+
 ## [0.2.3] - 2026-07-12
 
 ### Added — task label and subject in usage-log entries

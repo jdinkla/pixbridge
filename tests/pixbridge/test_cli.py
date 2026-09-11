@@ -716,3 +716,16 @@ class TestCheckCommand:
         check_command(self._args(tmp_path))
         out = capsys.readouterr().out
         assert "2 images checked, 1 failed" in out
+
+
+@pytest.mark.parametrize("quality", ["xhigh", "max", "auto"])
+@pytest.mark.parametrize("command,handler", [
+    ("generate", "generate_command"),
+    ("consistency-check", "consistency_check_command"),
+])
+def test_new_quality_cli_options(quality, command, handler):
+    argv = ["pixbridge", command, "input.yaml", "--provider", "openai",
+            "--model", "gpt-image-2.5-flare", "--quality", quality]
+    with patch("sys.argv", argv), patch(f"pixbridge.cli.{handler}", return_value=0) as run:
+        assert main() == 0
+    assert run.call_args.args[0].quality == quality
