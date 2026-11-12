@@ -19,7 +19,7 @@ build:
 test:
     uv run pytest tests/
 
-[doc("Run live provider tests (hits real APIs; needs API keys set; models are set at the top of this justfile; extra args go to pytest, e.g. `just test-live -k gemini`)")]
+[doc("Run live provider tests (hits real APIs; needs API keys set; models are set at the top of this justfile; images land in output/live/; extra args go to pytest, e.g. `just test-live -k gemini`)")]
 test-live *ARGS:
     uv run pytest tests/ -m live -v -rs {{ARGS}}
 

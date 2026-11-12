@@ -25,10 +25,11 @@ from pixbridge.models import GenerationNotes, ImagePrompt
 
 from .vision_verifier import VerifierUnavailable, verify_image
 
-# Persistent output dir so generated images stay around for inspection after the
-# run. Each provider gets its own subdir, wiped at the start of every run so the
+# Persistent output dir inside the repo (`output/` is gitignored) so generated
+# images stay around for inspection after the run. Anchored to the repo root,
+# not cwd. Each test gets its own subdir, wiped at the start of every run so the
 # only files left are from the most recent invocation.
-LIVE_OUTPUT_ROOT = Path("/tmp/pixbridge-live")
+LIVE_OUTPUT_ROOT = Path(__file__).resolve().parents[2] / "output" / "live"
 
 SHARED_PROMPT = ImagePrompt(
     full_prompt=(
