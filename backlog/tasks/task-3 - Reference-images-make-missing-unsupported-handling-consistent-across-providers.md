@@ -3,9 +3,11 @@ id: TASK-3
 title: >-
   Reference images: make missing/unsupported handling consistent across
   providers
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-11-11T15:02:00Z'
+updated_date: '2026-11-12T13:43:00Z'
 labels:
   - gemini
   - client
