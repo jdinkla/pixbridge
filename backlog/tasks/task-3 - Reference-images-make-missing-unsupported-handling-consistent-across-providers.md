@@ -3,11 +3,11 @@ id: TASK-3
 title: >-
   Reference images: make missing/unsupported handling consistent across
   providers
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-11T15:02:00Z'
-updated_date: '2026-11-12T13:43:00Z'
+updated_date: '2026-11-12T13:53:00Z'
 labels:
   - gemini
   - client
@@ -28,8 +28,29 @@ Reference-image errors are handled three different ways. OpenAI raises FileNotFo
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Gemini raises FileNotFoundError for a missing reference image, same as OpenAI
-- [ ] #2 Gemini logs a warning when more than 6 references are given, and metadata lists only the references actually sent
-- [ ] #3 ImageClient with default_reference_images on a provider without reference support raises ValueError instead of silently generating without them
-- [ ] #4 Tests cover all three cases
+- [x] #1 Gemini raises FileNotFoundError for a missing reference image, same as OpenAI
+- [x] #2 Gemini logs a warning when more than 6 references are given, and metadata lists only the references actually sent
+- [x] #3 ImageClient with default_reference_images on a provider without reference support raises ValueError instead of silently generating without them
+- [x] #4 Tests cover all three cases
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Gemini generate_with_references: check every reference path up front and raise FileNotFoundError before any API call.
+2. Log a warning when more than 6 references are given; build metadata from the list actually sent.
+3. ImageClient.generate_image: raise ValueError when default_reference_images is set and the provider lacks reference support (checked at call time so the provider stays lazy).
+4. Tests for all three cases.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented by an Opus subagent, reviewed and merged by the main session. Every supplied path is checked, including ones beyond the 6-image cap. Vertex inherits the behaviour from GeminiProvider. The old test_skips_nonexistent_references was replaced because it asserted the silent skip.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Gemini/Vertex now raise FileNotFoundError for a missing reference image (same message as OpenAI), warn when more than 6 references are passed, and report only the references actually sent in metadata. ImageClient.generate_image raises ValueError when default_reference_images is set on a provider without reference support. Tests cover all three cases. Full suite: 553 passed; ruff check and mypy clean. CHANGELOG updated (behaviour change for callers relying on silent skipping).
+<!-- SECTION:FINAL_SUMMARY:END -->
