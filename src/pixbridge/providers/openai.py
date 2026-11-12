@@ -35,7 +35,7 @@ ASPECT_RATIO_TO_SIZE = {
 }
 
 
-# OpenAI GPT Image 2 / 2.5 accepts arbitrary WxH where both dimensions are divisible
+# OpenAI GPT Image 2 / 2.5 / 2.6 accepts arbitrary WxH where both dimensions are divisible
 # by 16, the aspect ratio is in [1:3, 3:1], and max(W, H) ≤ 3840, total pixels in [655360, 8294400]. We expose
 # this as rule-based validation rather than a closed allowlist so callers can
 # pick true vertical/horizontal sizes (e.g. 1152x2048 for 9:16 shorts).
@@ -55,6 +55,15 @@ OPENAI_IMAGE_25_MODELS = (
     "gpt-image-2.5-sunburst-2026-09-08",
 )
 
+# GPT Image 2.6 has no dated snapshots published yet (checked 2026-11-12).
+OPENAI_IMAGE_26_MODELS = (
+    "gpt-image-2.6-flare",
+    "gpt-image-2.6-sunburst",
+)
+
+# Models that accept the `xhigh` and `max` quality levels.
+_OPENAI_EXTENDED_QUALITY_MODELS = (*OPENAI_IMAGE_25_MODELS, *OPENAI_IMAGE_26_MODELS)
+
 # Recommended sizes — surfaced via ProviderCapabilities.sizes for docs and
 # autocompletion. Any rule-conformant WxH is accepted; this list is illustrative.
 _OPENAI_RECOMMENDED_SIZES = [
@@ -69,7 +78,7 @@ _OPENAI_RECOMMENDED_SIZES = [
 
 
 def validate_openai_size(size: str) -> None:
-    """Raise ValueError if `size` is not a valid OpenAI GPT Image 2 / 2.5 WxH string.
+    """Raise ValueError if `size` is not a valid OpenAI GPT Image 2 / 2.5 / 2.6 WxH string.
 
     Rules: both dimensions divisible by 16, aspect ratio in [1:3, 3:1],
     max(W, H) ≤ 3840, total pixels in [655360, 8294400].
@@ -121,7 +130,7 @@ OPENAI_CAPABILITIES = ProviderCapabilities(
     sizes=list(_OPENAI_RECOMMENDED_SIZES),
     aspect_ratios=list(ASPECT_RATIO_TO_SIZE.keys()),
     quality_levels=["low", "medium", "high", "xhigh", "max", "auto"],
-    supported_models=["gpt-image-2", *OPENAI_IMAGE_25_MODELS],
+    supported_models=["gpt-image-2", *OPENAI_IMAGE_25_MODELS, *OPENAI_IMAGE_26_MODELS],
     default_size="1024x1024",
     default_aspect_ratio="1:1",
     default_quality="low",
@@ -172,10 +181,10 @@ class OpenAIProvider(BaseImageProvider):
         super().validate_params(
             model=model, size=size, aspect_ratio=aspect_ratio, quality=quality
         )
-        if quality in ("xhigh", "max") and model not in OPENAI_IMAGE_25_MODELS:
+        if quality in ("xhigh", "max") and model not in _OPENAI_EXTENDED_QUALITY_MODELS:
             raise ValueError(
                 f"Invalid quality '{quality}' for model '{model}': "
-                "xhigh and max require GPT Image 2.5 Flare or Sunburst."
+                "xhigh and max require GPT Image 2.5 or 2.6 (Flare or Sunburst)."
             )
 
     _OUTPUT_FORMAT_TO_MIME = {
@@ -327,7 +336,7 @@ class OpenAIProvider(BaseImageProvider):
             model: OpenAI model to use.
             size: Size dimensions. Takes precedence over aspect_ratio.
             aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
-            quality: Quality level (low, medium, high, auto; 2.5 also xhigh, max).
+            quality: Quality level (low, medium, high, auto; 2.5/2.6 also xhigh, max).
             moderation: Output-moderation strictness ("auto" | "low"). "low"
                 relaxes OpenAI's stricter default so dark/literary content is
                 not over-blocked; None sends nothing (the API default applies).
@@ -467,7 +476,7 @@ class OpenAIProvider(BaseImageProvider):
             model: OpenAI model to use (defaults to provider default).
             size: Size dimensions. Takes precedence over aspect_ratio.
             aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
-            quality: Quality level (low, medium, high, auto; 2.5 also xhigh, max).
+            quality: Quality level (low, medium, high, auto; 2.5/2.6 also xhigh, max).
             temperature: Ignored (accepted for cross-provider parity).
             output_format: Output image format ('png', 'jpeg', 'webp').
             output_compression: Compression level 0-100 for jpeg/webp.

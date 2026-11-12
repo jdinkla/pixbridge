@@ -59,7 +59,7 @@ path = client.generate_image(
 | Provider | Models | Style Transfer | Reference Images |
 |----------|--------|:-:|:-:|
 | Gemini | gemini-3-pro-image-preview | yes | yes |
-| OpenAI | gpt-image-2, gpt-image-2.5-flare, gpt-image-2.5-sunburst | yes | yes |
+| OpenAI | gpt-image-2, gpt-image-2.5-flare, gpt-image-2.5-sunburst, gpt-image-2.6-flare, gpt-image-2.6-sunburst | yes | yes |
 | xAI | grok-imagine-image | no | no |
 
 For OpenAI, style transfer and reference images run through the image edits endpoint (a single reference image performs style transfer; multiple references compose) — there is no dedicated "style" parameter.
@@ -139,19 +139,23 @@ Licensed under the [Apache License 2.0](LICENSE). See the [NOTICE](NOTICE) file
 for attribution requirements.
 
 
-### GPT Image 2.5
+### GPT Image 2.5 and 2.6
 
-Select `gpt-image-2.5-flare` for fast generation or `gpt-image-2.5-sunburst`
-for precise editing. Both accept `low`, `medium`, `high`, `xhigh`, `max`,
-and `auto` quality. The published `-2026-09-08` snapshots are also supported.
+Select a Flare model (`gpt-image-2.6-flare`, `gpt-image-2.5-flare`) for fast
+generation or a Sunburst model (`gpt-image-2.6-sunburst`,
+`gpt-image-2.5-sunburst`) for detailed work. All four accept `low`, `medium`,
+`high`, `xhigh`, and `max` quality; pixbridge also passes `auto` through. The
+published 2.5 `-2026-09-08` snapshots are also supported; 2.6 has no dated
+snapshots yet. The 2.6-only request options (`complexity`, SVG and animated GIF
+output, markup-guided edits) are not exposed by pixbridge.
 The library keeps its `low` quality default; no model is chosen automatically.
 GPT Image 2 continues to accept only `low`, `medium`, `high`, and `auto`.
-All three models share the custom-size rules above; resolutions above
+All these models share the custom-size rules above; resolutions above
 2560×1440 are experimental. Quality controls rendering effort independently
 of dimensions; matching quality names do not guarantee matching per-image cost.
 
 ```bash
-pixbridge generate prompt.yaml --provider openai --model gpt-image-2.5-flare --quality low
+pixbridge generate prompt.yaml --provider openai --model gpt-image-2.6-flare --quality low
 pixbridge generate prompt.yaml --provider openai --model gpt-image-2.5-sunburst --quality max --size 2048x1152
 ```
 

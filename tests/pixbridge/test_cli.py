@@ -718,14 +718,15 @@ class TestCheckCommand:
         assert "2 images checked, 1 failed" in out
 
 
+@pytest.mark.parametrize("model", ["gpt-image-2.5-flare", "gpt-image-2.6-flare"])
 @pytest.mark.parametrize("quality", ["xhigh", "max", "auto"])
 @pytest.mark.parametrize("command,handler", [
     ("generate", "generate_command"),
     ("consistency-check", "consistency_check_command"),
 ])
-def test_new_quality_cli_options(quality, command, handler):
+def test_new_quality_cli_options(model, quality, command, handler):
     argv = ["pixbridge", command, "input.yaml", "--provider", "openai",
-            "--model", "gpt-image-2.5-flare", "--quality", quality]
+            "--model", model, "--quality", quality]
     with patch("sys.argv", argv), patch(f"pixbridge.cli.{handler}", return_value=0) as run:
         assert main() == 0
     assert run.call_args.args[0].quality == quality

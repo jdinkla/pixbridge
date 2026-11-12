@@ -1,11 +1,12 @@
 # pixbridge justfile
 
-# Models the live tests run against. Configuration, not secrets: kept here
+# Models the live tests run against: the newest cheap/fast model per provider,
+# since these are API integration tests. Configuration, not secrets: kept here
 # rather than in .envrc. Override per run via the environment, e.g.
-# `PIXBRIDGE_LIVE_OPENAI_MODEL=gpt-image-2.5-flare just test-live`.
-export PIXBRIDGE_LIVE_GEMINI_MODEL := env("PIXBRIDGE_LIVE_GEMINI_MODEL", "gemini-3-pro-image-preview")
-export PIXBRIDGE_LIVE_OPENAI_MODEL := env("PIXBRIDGE_LIVE_OPENAI_MODEL", "gpt-image-2")
-export PIXBRIDGE_LIVE_XAI_MODEL := env("PIXBRIDGE_LIVE_XAI_MODEL", "grok-imagine-image")
+# `PIXBRIDGE_LIVE_OPENAI_MODEL=gpt-image-2.6-sunburst just test-live`.
+export PIXBRIDGE_LIVE_GEMINI_MODEL := env("PIXBRIDGE_LIVE_GEMINI_MODEL", "gemini-3.1-flash-lite-image")
+export PIXBRIDGE_LIVE_OPENAI_MODEL := env("PIXBRIDGE_LIVE_OPENAI_MODEL", "gpt-image-2.6-flare")
+export PIXBRIDGE_LIVE_XAI_MODEL := env("PIXBRIDGE_LIVE_XAI_MODEL", "grok-imagine-image-2.0")
 
 default:
     @just --list

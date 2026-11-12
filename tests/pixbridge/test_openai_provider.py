@@ -18,6 +18,7 @@ except ImportError:
 from pixbridge.providers.openai import (
     ASPECT_RATIO_TO_SIZE,
     OPENAI_IMAGE_25_MODELS,
+    OPENAI_IMAGE_26_MODELS,
     OpenAIProvider,
     is_valid_openai_size,
     validate_openai_size,
@@ -69,7 +70,11 @@ class TestOpenAICapabilities:
         assert provider.capabilities.supports_reference_images is True
 
     def test_supported_models_allowlist(self, provider):
-        assert provider.capabilities.supported_models == ["gpt-image-2", *OPENAI_IMAGE_25_MODELS]
+        assert provider.capabilities.supported_models == [
+            "gpt-image-2",
+            *OPENAI_IMAGE_25_MODELS,
+            *OPENAI_IMAGE_26_MODELS,
+        ]
 
 
 class TestModelAllowlist:
@@ -550,7 +555,7 @@ class TestPromptTruncation:
         assert result.metadata["prompt_truncated"] is False
 
 
-@pytest.mark.parametrize("model", OPENAI_IMAGE_25_MODELS)
+@pytest.mark.parametrize("model", [*OPENAI_IMAGE_25_MODELS, *OPENAI_IMAGE_26_MODELS])
 @pytest.mark.parametrize("quality", ["low", "medium", "high", "xhigh", "max", "auto"])
 @pytest.mark.parametrize("references", [False, True])
 def test_image_25_sdk_requests(provider, sample_prompt, tiny_png_bytes, tmp_path,
@@ -580,7 +585,7 @@ def test_image_25_sdk_requests(provider, sample_prompt, tiny_png_bytes, tmp_path
 @pytest.mark.parametrize("references", [False, True])
 def test_image_2_rejects_25_quality_before_sdk(provider, sample_prompt, quality, references):
     provider._client = MagicMock()
-    with pytest.raises(ValueError, match=r"require GPT Image 2\.5"):
+    with pytest.raises(ValueError, match=r"require GPT Image 2\.5 or 2\.6"):
         if references:
             provider.generate_with_references(sample_prompt, [], model="gpt-image-2", quality=quality)
         else:
@@ -589,12 +594,25 @@ def test_image_2_rejects_25_quality_before_sdk(provider, sample_prompt, quality,
     provider._client.images.edit.assert_not_called()
 
 
-@pytest.mark.parametrize("model", ["gpt-image-2.5-flare", "gpt-image-2.5-sunburst"])
+@pytest.mark.parametrize("model", ["gpt-image-2.6", "gpt-image-2.7-flare", "gpt-image-2.6-flare-2026-01-01"])
+def test_unknown_26_like_models_rejected_before_sdk(provider, sample_prompt, model):
+    provider._client = MagicMock()
+    with pytest.raises(ValueError):
+        provider.generate(sample_prompt, model=model)
+    provider._client.images.generate.assert_not_called()
+
+
+@pytest.mark.parametrize("model", [
+    "gpt-image-2.5-flare",
+    "gpt-image-2.5-sunburst",
+    "gpt-image-2.6-flare",
+    "gpt-image-2.6-sunburst",
+])
 @pytest.mark.parametrize("quality", ["xhigh", "max"])
 @pytest.mark.parametrize("references", [False, True])
 def test_image_25_real_sdk_serialization(provider, sample_prompt, tiny_png_bytes,
                                        tmp_path, model, quality, references):
-    """Older SDK type enums must not prevent valid 2.5 requests on the wire."""
+    """Older SDK type enums must not prevent valid 2.5 / 2.6 requests on the wire."""
     requests = []
 
     def respond(request):

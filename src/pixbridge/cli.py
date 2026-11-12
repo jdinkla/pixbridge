@@ -485,7 +485,7 @@ def main() -> int:
         type=str,
         choices=["low", "medium", "high", "xhigh", "max", "auto"],
         default=None,
-        help="Quality level for OpenAI provider (xhigh/max require GPT Image 2.5) (default: provider default, currently 'low' for gpt-image-2)",
+        help="Quality level for OpenAI provider (xhigh/max require GPT Image 2.5 or 2.6) (default: provider default, currently 'low' for gpt-image-2)",
     )
 
     # Style-transfer command
@@ -621,7 +621,7 @@ def main() -> int:
         type=str,
         choices=["low", "medium", "high", "xhigh", "max", "auto"],
         default=None,
-        help="Quality level for OpenAI provider (xhigh/max require GPT Image 2.5)",
+        help="Quality level for OpenAI provider (xhigh/max require GPT Image 2.5 or 2.6)",
     )
     cc_parser.add_argument(
         "--scene",

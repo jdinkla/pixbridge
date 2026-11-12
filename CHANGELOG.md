@@ -4,6 +4,9 @@ All notable changes to pixbridge are documented in this file.
 
 ## [Unreleased]
 
+- Support GPT Image 2.6 Flare and Sunburst (`gpt-image-2.6-flare`,
+  `gpt-image-2.6-sunburst`) in generation and reference editing, with the same
+  quality levels and size rules as 2.5.
 - Support GPT Image 2.5 Flare and Sunburst, including their 2026-09-08 snapshots,
   in generation and reference editing. Add model-specific `xhigh` and `max`
   quality validation and expose all six quality options in the CLI.
