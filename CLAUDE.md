@@ -47,6 +47,13 @@ just build           # Alias for uv sync
 - OpenAI supports `gpt-image-2`, `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`, `gpt-image-2.6-flare`, and `gpt-image-2.6-sunburst` (including the 2.5 `-2026-09-08` snapshots; 2.6 has none yet). Only 2.5 and 2.6 accept `xhigh` and `max`; all accept `low`, `medium`, `high`, and `auto`. OpenAI support targets these families only (older `gpt-image-1.x` models are no longer supported; the `supported_models` allowlist enforces this). Its capability `sizes` list (`1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160`) is a set of recommended values for docs/autocompletion; actual validation is rule-based via `validate_openai_size` (both dims divisible by 16, ratio in `[1:3, 3:1]`, `max(W, H) ≤ 3840`, total pixels in `[655360, 8294400]`).
 - OpenAI style transfer and reference images run through `client.images.edit` (single reference = style transfer, multiple = composition). gpt-image-2 has no dedicated "style" parameter — both capabilities are delivered via the edits endpoint.
 
+## Working Autonomously
+
+These override the Backlog.md guides below where they conflict.
+
+- Create Backlog tasks for follow-up work you discover, without asking. This overrides the finalization guide's "Do not create or start follow-up tasks without user approval" for *creating* tasks. Starting a follow-up task still needs a go-ahead.
+- Commit finished, verified work without asking. Do not push without being asked.
+
 <!-- BACKLOG.MD GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.55.3 -->
 <CRITICAL_INSTRUCTION>
