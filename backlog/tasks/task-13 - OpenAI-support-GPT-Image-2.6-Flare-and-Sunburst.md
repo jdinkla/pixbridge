@@ -2,8 +2,10 @@
 id: TASK-13
 title: 'OpenAI: support GPT Image 2.6 Flare and Sunburst'
 status: In Progress
-assignee: []
+assignee:
+  - '@claude'
 created_date: '2026-11-12T14:45:00Z'
+updated_date: '2026-11-12T14:45:00Z'
 labels: []
 dependencies: []
 references:
