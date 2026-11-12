@@ -1,9 +1,11 @@
 ---
 id: TASK-1
 title: 'OpenAI: explicit size is overridden by aspect ratio (4K unreachable)'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-11-11T15:02:00Z'
+updated_date: '2026-11-12T13:43:00Z'
 labels:
   - openai
   - sizes
