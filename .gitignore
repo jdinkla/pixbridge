@@ -48,7 +48,6 @@ htmlcov/
 
 # uv
 .python-version
-uv.lock
 
 # Output
 output/

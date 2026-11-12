@@ -30,13 +30,30 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --python ${{ matrix.python-version }}
+        run: uv sync --locked --python ${{ matrix.python-version }}
 
       - name: Lint (ruff)
         run: uv run ruff check src/ tests/
 
       - name: Type-check (mypy)
         run: uv run mypy src/pixbridge
+
+      - name: Test (pytest)
+        run: uv run pytest tests/
+
+  # The committed uv.lock pins the provider SDKs, but users install whatever
+  # the declared ranges allow. Run the tests against the newest releases too.
+  latest-deps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install newest allowed dependencies
+        run: uv sync --upgrade --python 3.13
 
       - name: Test (pytest)
         run: uv run pytest tests/
