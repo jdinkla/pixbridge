@@ -62,6 +62,7 @@ class XAIProvider(BaseImageProvider):
         size: str | None = None,
         aspect_ratio: str | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
     ) -> None:
         """Validate parameters with specific check for unsupported aspect ratios.
 
@@ -75,7 +76,13 @@ class XAIProvider(BaseImageProvider):
             )
 
         # Call parent validation for other checks
-        super().validate_params(model=model, size=size, aspect_ratio=aspect_ratio, quality=quality)
+        super().validate_params(
+            model=model,
+            size=size,
+            aspect_ratio=aspect_ratio,
+            quality=quality,
+            complexity=complexity,
+        )
 
     def generate(
         self,

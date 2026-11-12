@@ -117,6 +117,11 @@ def generate_command(args: argparse.Namespace) -> int:
             print(f"  Size: {gen_params['size']}")
         if provider_name == "openai":
             print(f"  Quality: {gen_params['quality']}")
+        # The client rejects a set complexity for providers and models without
+        # complexity support (OpenAI GPT Image 2.6 only).
+        complexity: str | None = getattr(args, "complexity", None)
+        if complexity is not None:
+            print(f"  Complexity: {complexity}")
 
         image_path = client.generate_image(
             prompt,
@@ -125,6 +130,7 @@ def generate_command(args: argparse.Namespace) -> int:
             aspect_ratio=aspect_ratio,
             size=gen_params.get("size"),
             quality=gen_params.get("quality"),
+            complexity=complexity,
         )
 
         print(f"Image saved to: {image_path}")
@@ -486,6 +492,13 @@ def main() -> int:
         choices=["low", "medium", "high", "xhigh", "max", "auto"],
         default=None,
         help="Quality level for OpenAI provider (xhigh/max require GPT Image 2.5 or 2.6) (default: provider default, currently 'low' for gpt-image-2)",
+    )
+    gen_parser.add_argument(
+        "--complexity",
+        type=str,
+        choices=["low", "medium", "high"],
+        default=None,
+        help="Complexity level, OpenAI GPT Image 2.6 only (default: not sent; the API default applies)",
     )
 
     # Style-transfer command

@@ -146,8 +146,14 @@ generation or a Sunburst model (`gpt-image-2.6-sunburst`,
 `gpt-image-2.5-sunburst`) for detailed work. All four accept `low`, `medium`,
 `high`, `xhigh`, and `max` quality; pixbridge also passes `auto` through. The
 published 2.5 `-2026-09-08` snapshots are also supported; 2.6 has no dated
-snapshots yet. The 2.6-only request options (`complexity`, SVG and animated GIF
-output, markup-guided edits) are not exposed by pixbridge.
+snapshots yet.
+
+GPT Image 2.6 also takes a `complexity` option (`low`, `medium`, `high`):
+`--complexity` on `pixbridge generate`, or `complexity=` on
+`ImageClient.generate_image` / `generate_image_with_references`. When omitted,
+nothing is sent and the API default (`high`) applies. Any other model or
+provider rejects it locally with a `ValueError`. The other 2.6-only options
+(SVG and animated GIF output, markup-guided edits) are not exposed by pixbridge.
 The library keeps its `low` quality default; no model is chosen automatically.
 GPT Image 2 continues to accept only `low`, `medium`, `high`, and `auto`.
 All these models share the custom-size rules above; resolutions above
@@ -155,7 +161,7 @@ All these models share the custom-size rules above; resolutions above
 of dimensions; matching quality names do not guarantee matching per-image cost.
 
 ```bash
-pixbridge generate prompt.yaml --provider openai --model gpt-image-2.6-flare --quality low
+pixbridge generate prompt.yaml --provider openai --model gpt-image-2.6-flare --quality low --complexity low
 pixbridge generate prompt.yaml --provider openai --model gpt-image-2.5-sunburst --quality max --size 2048x1152
 ```
 

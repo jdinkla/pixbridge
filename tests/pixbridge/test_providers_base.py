@@ -117,6 +117,12 @@ class TestValidateParams:
         with pytest.raises(ValueError, match="Invalid quality"):
             p.validate_params(model="model-a", quality="ultra")
 
+    def test_complexity_not_supported(self):
+        """Provider without complexity_levels rejects the complexity parameter."""
+        p = ConcreteProvider()
+        with pytest.raises(ValueError, match="does not support complexity"):
+            p.validate_params(model="model-a", complexity="low")
+
     def test_quality_not_supported(self):
         """Provider without quality_levels rejects quality parameter."""
 

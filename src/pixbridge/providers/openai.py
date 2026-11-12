@@ -130,6 +130,7 @@ OPENAI_CAPABILITIES = ProviderCapabilities(
     sizes=list(_OPENAI_RECOMMENDED_SIZES),
     aspect_ratios=list(ASPECT_RATIO_TO_SIZE.keys()),
     quality_levels=["low", "medium", "high", "xhigh", "max", "auto"],
+    complexity_levels=["low", "medium", "high"],
     supported_models=["gpt-image-2", *OPENAI_IMAGE_25_MODELS, *OPENAI_IMAGE_26_MODELS],
     default_size="1024x1024",
     default_aspect_ratio="1:1",
@@ -177,15 +178,37 @@ class OpenAIProvider(BaseImageProvider):
         size: str | None = None,
         aspect_ratio: str | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
     ) -> None:
         super().validate_params(
-            model=model, size=size, aspect_ratio=aspect_ratio, quality=quality
+            model=model,
+            size=size,
+            aspect_ratio=aspect_ratio,
+            quality=quality,
+            complexity=complexity,
         )
+        if complexity is not None and model not in OPENAI_IMAGE_26_MODELS:
+            raise ValueError(
+                f"Invalid complexity '{complexity}' for model '{model}': "
+                "complexity requires GPT Image 2.6 (Flare or Sunburst)."
+            )
         if quality in ("xhigh", "max") and model not in _OPENAI_EXTENDED_QUALITY_MODELS:
             raise ValueError(
                 f"Invalid quality '{quality}' for model '{model}': "
                 "xhigh and max require GPT Image 2.5 or 2.6 (Flare or Sunburst)."
             )
+
+    @staticmethod
+    def _complexity_kwargs(complexity: str | None) -> dict[str, Any]:
+        """SDK kwargs for the 2.6 ``complexity`` field; empty when not set.
+
+        Sent via ``extra_body`` because older SDK releases have no named
+        ``complexity`` parameter. The SDK merges it into the JSON body
+        (generations) and the multipart form (edits) alike.
+        """
+        if complexity is None:
+            return {}
+        return {"extra_body": {"complexity": complexity}}
 
     _OUTPUT_FORMAT_TO_MIME = {
         "png": "image/png",
@@ -328,6 +351,7 @@ class OpenAIProvider(BaseImageProvider):
         output_format: str | None = None,
         output_compression: int | None = None,
         moderation: str | None = None,
+        complexity: str | None = None,
     ) -> GenerationResult:
         """Generate an image using OpenAI API.
 
@@ -337,6 +361,8 @@ class OpenAIProvider(BaseImageProvider):
             size: Size dimensions. Takes precedence over aspect_ratio.
             aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
             quality: Quality level (low, medium, high, auto; 2.5/2.6 also xhigh, max).
+            complexity: GPT Image 2.6 only: "low" | "medium" | "high". None sends
+                nothing (the API default, currently "high", applies).
             moderation: Output-moderation strictness ("auto" | "low"). "low"
                 relaxes OpenAI's stricter default so dark/literary content is
                 not over-blocked; None sends nothing (the API default applies).
@@ -367,7 +393,7 @@ class OpenAIProvider(BaseImageProvider):
             raise RuntimeError("OpenAI provider has no default size configured")
 
         # Validate parameters
-        self.validate_params(model=model, size=size, quality=quality)
+        self.validate_params(model=model, size=size, quality=quality, complexity=complexity)
         assert model is not None  # narrowed: validate_params raises when None
         output_format = self._normalize_output_format(output_format)
 
@@ -399,6 +425,7 @@ class OpenAIProvider(BaseImageProvider):
         # default so dark/literary content isn't over-blocked. Only sent when set.
         if moderation is not None:
             extra_kwargs["moderation"] = cast("Literal['low', 'auto']", moderation)
+        extra_kwargs.update(self._complexity_kwargs(complexity))
 
         # Generate the image. Size is validated rule-based above and passed as
         # an arbitrary WxH string — the SDK accepts any valid OpenAI size.
@@ -440,6 +467,7 @@ class OpenAIProvider(BaseImageProvider):
                 "size": size,
                 "aspect_ratio": aspect_ratio,
                 "quality": quality,
+                "complexity": complexity,
                 "output_format": output_format,
                 "output_compression": output_compression,
                 "revised_prompt": getattr(first, "revised_prompt", None),
@@ -460,6 +488,7 @@ class OpenAIProvider(BaseImageProvider):
         temperature: float | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        complexity: str | None = None,
     ) -> GenerationResult:
         """Generate an image with reference images via the OpenAI edits endpoint.
 
@@ -477,6 +506,8 @@ class OpenAIProvider(BaseImageProvider):
             size: Size dimensions. Takes precedence over aspect_ratio.
             aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
             quality: Quality level (low, medium, high, auto; 2.5/2.6 also xhigh, max).
+            complexity: GPT Image 2.6 only: "low" | "medium" | "high". None sends
+                nothing (the API default applies).
             temperature: Ignored (accepted for cross-provider parity).
             output_format: Output image format ('png', 'jpeg', 'webp').
             output_compression: Compression level 0-100 for jpeg/webp.
@@ -502,7 +533,7 @@ class OpenAIProvider(BaseImageProvider):
         if size is None:
             raise RuntimeError("OpenAI provider has no default size configured")
 
-        self.validate_params(model=model, size=size, quality=quality)
+        self.validate_params(model=model, size=size, quality=quality, complexity=complexity)
         assert model is not None  # narrowed: validate_params raises when None
         output_format = self._normalize_output_format(output_format)
 
@@ -537,6 +568,7 @@ class OpenAIProvider(BaseImageProvider):
             extra_kwargs["output_format"] = cast("Literal['png', 'jpeg', 'webp']", output_format)
         if output_compression is not None and output_format in ("jpeg", "webp"):
             extra_kwargs["output_compression"] = output_compression
+        extra_kwargs.update(self._complexity_kwargs(complexity))
 
         client = self._get_client()
         # Open all reference files for the duration of the API call.
@@ -581,6 +613,7 @@ class OpenAIProvider(BaseImageProvider):
                 "size": size,
                 "aspect_ratio": aspect_ratio,
                 "quality": quality,
+                "complexity": complexity,
                 "output_format": output_format,
                 "output_compression": output_compression,
                 "reference_images": [str(p) for p in existing_refs],

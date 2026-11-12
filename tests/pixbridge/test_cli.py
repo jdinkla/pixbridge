@@ -730,3 +730,47 @@ def test_new_quality_cli_options(model, quality, command, handler):
     with patch("sys.argv", argv), patch(f"pixbridge.cli.{handler}", return_value=0) as run:
         assert main() == 0
     assert run.call_args.args[0].quality == quality
+
+
+@pytest.mark.parametrize("complexity", ["low", "medium", "high"])
+def test_complexity_cli_option(complexity):
+    argv = ["pixbridge", "generate", "input.yaml", "--provider", "openai",
+            "--model", "gpt-image-2.6-flare", "--complexity", complexity]
+    with patch("sys.argv", argv), patch("pixbridge.cli.generate_command", return_value=0) as run:
+        assert main() == 0
+    assert run.call_args.args[0].complexity == complexity
+
+
+def test_complexity_cli_option_defaults_to_none():
+    argv = ["pixbridge", "generate", "input.yaml", "--provider", "openai",
+            "--model", "gpt-image-2.6-flare"]
+    with patch("sys.argv", argv), patch("pixbridge.cli.generate_command", return_value=0) as run:
+        assert main() == 0
+    assert run.call_args.args[0].complexity is None
+
+
+def test_complexity_cli_rejects_unknown_value(capsys):
+    argv = ["pixbridge", "generate", "input.yaml", "--provider", "openai",
+            "--model", "gpt-image-2.6-flare", "--complexity", "bogus"]
+    with patch("sys.argv", argv), pytest.raises(SystemExit):
+        main()
+
+
+@patch("pixbridge.cli.ImageClient")
+def test_generate_command_forwards_complexity(mock_cls, tmp_path):
+    mock_client = MagicMock()
+    mock_client.provider.capabilities = MagicMock(default_quality="low")
+    mock_client.generate_image.return_value = tmp_path / "image.png"
+    mock_cls.return_value = mock_client
+    prompt_file = tmp_path / "prompt.yaml"
+    prompt_file.write_text(yaml.dump({
+        "full_prompt": "A cat",
+        "generation_notes": {"aspect_ratio": "1:1", "key_requirements": []},
+    }))
+    args = argparse.Namespace(
+        prompt_file=str(prompt_file), output=str(tmp_path), provider="openai",
+        model="gpt-image-2.6-flare", size=None, aspect_ratio="1:1", quality=None,
+        complexity="low",
+    )
+    assert generate_command(args) == 0
+    assert mock_client.generate_image.call_args.kwargs["complexity"] == "low"

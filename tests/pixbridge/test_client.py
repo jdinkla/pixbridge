@@ -21,6 +21,7 @@ from pixbridge.providers.base import GenerationResult, ProviderCapabilities
 def _make_provider(
     supports_style_transfer: bool = False,
     supports_reference_images: bool = False,
+    complexity_levels: list[str] | None = None,
 ) -> MagicMock:
     """Create a mock provider with configurable capabilities."""
     provider = MagicMock()
@@ -32,6 +33,7 @@ def _make_provider(
         default_aspect_ratio="16:9",
         supports_style_transfer=supports_style_transfer,
         supports_reference_images=supports_reference_images,
+        complexity_levels=complexity_levels,
     )
     return provider
 
@@ -153,6 +155,68 @@ class TestGenerateImage:
         path = client.generate_image(sample_prompt, str(tmp_path / "out"))
 
         assert path.exists()
+
+
+class TestComplexity:
+    def test_passed_to_provider_when_supported(self, sample_prompt, tiny_png_bytes, tmp_path):
+        client = ImageClient()
+        mock_provider = _make_provider(complexity_levels=["low", "medium", "high"])
+        mock_provider.generate.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(sample_prompt, tmp_path, model="m", complexity="low")
+
+        assert mock_provider.generate.call_args[1]["complexity"] == "low"
+
+    def test_not_passed_when_omitted(self, sample_prompt, tiny_png_bytes, tmp_path):
+        client = ImageClient()
+        mock_provider = _make_provider(complexity_levels=["low", "medium", "high"])
+        mock_provider.generate.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(sample_prompt, tmp_path, model="m")
+
+        assert "complexity" not in mock_provider.generate.call_args[1]
+
+    def test_raises_when_provider_unsupported(self, sample_prompt, tmp_path):
+        client = ImageClient()
+        mock_provider = _make_provider()
+        client._provider = mock_provider
+
+        with pytest.raises(ValueError, match="does not support the complexity"):
+            client.generate_image(sample_prompt, tmp_path, model="m", complexity="low")
+        mock_provider.generate.assert_not_called()
+
+    def test_passed_with_references(self, sample_prompt, tiny_png_bytes, tmp_path):
+        client = ImageClient()
+        mock_provider = _make_provider(
+            supports_reference_images=True, complexity_levels=["low", "medium", "high"]
+        )
+        mock_provider.generate_with_references.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+        ref = tmp_path / "ref.png"
+        ref.write_bytes(tiny_png_bytes)
+
+        client.generate_image_with_references(
+            sample_prompt, [ref], tmp_path, model="m", complexity="high"
+        )
+
+        assert mock_provider.generate_with_references.call_args[1]["complexity"] == "high"
+
+    def test_references_raise_when_provider_unsupported(
+        self, sample_prompt, tiny_png_bytes, tmp_path
+    ):
+        client = ImageClient()
+        mock_provider = _make_provider(supports_reference_images=True)
+        client._provider = mock_provider
+        ref = tmp_path / "ref.png"
+        ref.write_bytes(tiny_png_bytes)
+
+        with pytest.raises(ValueError, match="does not support the complexity"):
+            client.generate_image_with_references(
+                sample_prompt, [ref], tmp_path, model="m", complexity="low"
+            )
+        mock_provider.generate_with_references.assert_not_called()
 
 
 class TestGenerateImageSizeResolution:

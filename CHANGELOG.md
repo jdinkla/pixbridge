@@ -4,6 +4,10 @@ All notable changes to pixbridge are documented in this file.
 
 ## [Unreleased]
 
+- Add the GPT Image 2.6 `complexity` option (`low`/`medium`/`high`):
+  `--complexity` on `pixbridge generate` and `complexity=` on
+  `ImageClient.generate_image` / `generate_image_with_references`. Rejected
+  locally for other models and providers; not sent when omitted.
 - Support GPT Image 2.6 Flare and Sunburst (`gpt-image-2.6-flare`,
   `gpt-image-2.6-sunburst`) in generation and reference editing, with the same
   quality levels and size rules as 2.5.

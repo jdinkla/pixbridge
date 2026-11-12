@@ -47,6 +47,9 @@ class ProviderCapabilities:
     sizes: list[str]
     aspect_ratios: list[str]
     quality_levels: list[str] | None = None
+    # Accepted values for the ``complexity`` request option. ``None`` means the
+    # provider does not support it (OpenAI GPT Image 2.6: low/medium/high).
+    complexity_levels: list[str] | None = None
     # Closed allowlist of accepted model strings. ``None`` means no restriction
     # — any model flows through to the provider SDK (the default pass-through
     # behavior). A non-empty list rejects unknown models locally before any API
@@ -172,6 +175,7 @@ class ImageProvider(Protocol):
         size: str | None = None,
         aspect_ratio: str | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
     ) -> None:
         """Validate generation parameters against provider capabilities.
 
@@ -285,6 +289,7 @@ class BaseImageProvider(ABC):
         size: str | None = None,
         aspect_ratio: str | None = None,
         quality: str | None = None,
+        complexity: str | None = None,
     ) -> None:
         """Validate generation parameters against provider capabilities.
 
@@ -324,6 +329,15 @@ class BaseImageProvider(ABC):
                 raise ValueError(
                     f"Invalid quality '{quality}' for {self.name}. "
                     f"Must be one of: {caps.quality_levels}"
+                )
+
+        if complexity is not None:
+            if caps.complexity_levels is None:
+                raise ValueError(f"Provider {self.name} does not support complexity parameter")
+            if complexity not in caps.complexity_levels:
+                raise ValueError(
+                    f"Invalid complexity '{complexity}' for {self.name}. "
+                    f"Must be one of: {caps.complexity_levels}"
                 )
 
     def _get_api_key(self, env_keys: list[str]) -> str:

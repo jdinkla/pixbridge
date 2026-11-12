@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 
@@ -172,6 +173,21 @@ class ImageClient:
         entry.update(result.metadata)
         log_usage(self.usage_log, entry)
 
+    def _complexity_kwargs(self, complexity: str | None) -> dict[str, Any]:
+        """Provider kwargs for ``complexity``; empty when not set.
+
+        Only providers that advertise ``complexity_levels`` take the argument,
+        so it is passed only when set, and rejected here for the others.
+        """
+        if complexity is None:
+            return {}
+        if self.provider.capabilities.complexity_levels is None:
+            raise ValueError(
+                f"Provider '{self.provider_name}' does not support the complexity "
+                "parameter (OpenAI GPT Image 2.6 only)."
+            )
+        return {"complexity": complexity}
+
     def generate_image(
         self,
         prompt: ImagePrompt,
@@ -182,6 +198,7 @@ class ImageClient:
         quality: str | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        complexity: str | None = None,
         usage_task: str | None = None,
         usage_subject: str | None = None,
     ) -> Path:
@@ -198,6 +215,9 @@ class ImageClient:
                 may ignore if unsupported (gemini/xai/vertex always emit png).
             output_compression: Compression level 0-100 for jpeg/webp. Ignored
                 for png and unsupported providers.
+            complexity: OpenAI GPT Image 2.6 only: "low" | "medium" | "high".
+                None sends nothing (the API default applies). Raises
+                ValueError for providers or models without complexity support.
             usage_task: Optional task label for the usage-log entry (e.g.
                 "refs"). Defaults to "image" when omitted.
             usage_subject: Optional subject for the usage-log entry, typically
@@ -219,6 +239,7 @@ class ImageClient:
         output_format = output_format or self.default_output_format
         if output_compression is None:
             output_compression = self.default_output_compression
+        complexity_kwargs = self._complexity_kwargs(complexity)
 
         # Auto-promote to references when client has defaults configured.
         # Slide-pipeline use case: --ref-image is set globally and every slide
@@ -245,6 +266,7 @@ class ImageClient:
                 quality=quality,
                 output_format=output_format,
                 output_compression=output_compression,
+                **complexity_kwargs,
             )
             self._log_usage(
                 "generate_image_with_references",
@@ -263,6 +285,7 @@ class ImageClient:
                 quality=quality,
                 output_format=output_format,
                 output_compression=output_compression,
+                **complexity_kwargs,
             )
             self._log_usage(
                 "generate_image",
@@ -309,6 +332,7 @@ class ImageClient:
         temperature: float | None = None,
         output_format: str | None = None,
         output_compression: int | None = None,
+        complexity: str | None = None,
         usage_task: str | None = None,
         usage_subject: str | None = None,
     ) -> Path:
@@ -329,6 +353,8 @@ class ImageClient:
             aspect_ratio: Aspect ratio for the image.
             quality: Quality level (OpenAI only).
             temperature: Generation temperature (lower = more consistent).
+            complexity: OpenAI GPT Image 2.6 only: "low" | "medium" | "high".
+                None sends nothing (the API default applies).
             usage_task: Optional task label for the usage-log entry (e.g.
                 "refs"). Defaults to "image" when omitted.
             usage_subject: Optional subject for the usage-log entry, typically
@@ -349,6 +375,7 @@ class ImageClient:
         output_format = output_format or self.default_output_format
         if output_compression is None:
             output_compression = self.default_output_compression
+        complexity_kwargs = self._complexity_kwargs(complexity)
 
         if reference_images and not self.provider.capabilities.supports_reference_images:
             raise ValueError(
@@ -369,6 +396,7 @@ class ImageClient:
                 temperature=temperature,
                 output_format=output_format,
                 output_compression=output_compression,
+                **complexity_kwargs,
             )
             method = "generate_image_with_references"
         else:
@@ -380,6 +408,7 @@ class ImageClient:
                 quality=quality,
                 output_format=output_format,
                 output_compression=output_compression,
+                **complexity_kwargs,
             )
             method = "generate_image"
         self._log_usage(

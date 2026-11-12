@@ -642,3 +642,109 @@ def test_image_25_real_sdk_serialization(provider, sample_prompt, tiny_png_bytes
         assert path == "/v1/images/generations"
         assert json.loads(body)["quality"] == quality
         assert json.loads(body)["model"] == model
+
+
+# --- complexity (GPT Image 2.6 only) ---------------------------------------
+
+
+@pytest.mark.parametrize("model", OPENAI_IMAGE_26_MODELS)
+@pytest.mark.parametrize("complexity", ["low", "medium", "high"])
+@pytest.mark.parametrize("references", [False, True])
+def test_complexity_sent_via_extra_body(provider, sample_prompt, tiny_png_bytes, tmp_path,
+                                        model, complexity, references):
+    client = MagicMock()
+    provider._client = client
+    endpoint = client.images.edit if references else client.images.generate
+    endpoint.return_value = _make_openai_response(
+        b64_json=base64.b64encode(tiny_png_bytes).decode("ascii")
+    )
+    if references:
+        reference = tmp_path / "reference.png"
+        reference.write_bytes(tiny_png_bytes)
+        result = provider.generate_with_references(
+            sample_prompt, [reference], model=model, complexity=complexity
+        )
+    else:
+        result = provider.generate(sample_prompt, model=model, complexity=complexity)
+    assert endpoint.call_args.kwargs["extra_body"] == {"complexity": complexity}
+    assert result.metadata["complexity"] == complexity
+
+
+@pytest.mark.parametrize("references", [False, True])
+def test_complexity_not_sent_when_omitted(provider, sample_prompt, tiny_png_bytes, tmp_path,
+                                          references):
+    client = MagicMock()
+    provider._client = client
+    endpoint = client.images.edit if references else client.images.generate
+    endpoint.return_value = _make_openai_response(
+        b64_json=base64.b64encode(tiny_png_bytes).decode("ascii")
+    )
+    if references:
+        reference = tmp_path / "reference.png"
+        reference.write_bytes(tiny_png_bytes)
+        result = provider.generate_with_references(
+            sample_prompt, [reference], model="gpt-image-2.6-flare"
+        )
+    else:
+        result = provider.generate(sample_prompt, model="gpt-image-2.6-flare")
+    assert "extra_body" not in endpoint.call_args.kwargs
+    assert result.metadata["complexity"] is None
+
+
+@pytest.mark.parametrize("model,complexity,match", [
+    ("gpt-image-2", "low", r"requires GPT Image 2\.6"),
+    ("gpt-image-2.5-flare", "low", r"requires GPT Image 2\.6"),
+    ("gpt-image-2.5-sunburst-2026-09-08", "high", r"requires GPT Image 2\.6"),
+    ("gpt-image-2.6-flare", "bogus", r"Invalid complexity 'bogus'"),
+    ("gpt-image-2.6-flare", "auto", r"Invalid complexity 'auto'"),
+])
+@pytest.mark.parametrize("references", [False, True])
+def test_complexity_rejected_before_sdk(provider, sample_prompt, tiny_png_bytes, tmp_path,
+                                        model, complexity, match, references):
+    provider._client = MagicMock()
+    reference = tmp_path / "reference.png"
+    reference.write_bytes(tiny_png_bytes)
+    with pytest.raises(ValueError, match=match):
+        if references:
+            provider.generate_with_references(
+                sample_prompt, [reference], model=model, complexity=complexity
+            )
+        else:
+            provider.generate(sample_prompt, model=model, complexity=complexity)
+    provider._client.images.generate.assert_not_called()
+    provider._client.images.edit.assert_not_called()
+
+
+@pytest.mark.parametrize("references", [False, True])
+def test_complexity_real_sdk_serialization(provider, sample_prompt, tiny_png_bytes,
+                                           tmp_path, references):
+    """extra_body must land in the JSON body and in the multipart form."""
+    requests = []
+
+    def respond(request):
+        requests.append((request.url.path, request.read()))
+        return httpx.Response(200, json={
+            "created": 0,
+            "data": [{"b64_json": base64.b64encode(tiny_png_bytes).decode("ascii")}],
+        })
+
+    with OpenAI(api_key="test-key", http_client=httpx.Client(
+        transport=httpx.MockTransport(respond)
+    )) as client:
+        provider._client = client
+        if references:
+            reference = tmp_path / "reference.png"
+            reference.write_bytes(tiny_png_bytes)
+            provider.generate_with_references(
+                sample_prompt, [reference], model="gpt-image-2.6-flare", complexity="low"
+            )
+        else:
+            provider.generate(sample_prompt, model="gpt-image-2.6-flare", complexity="low")
+    assert len(requests) == 1
+    path, body = requests[0]
+    if references:
+        assert path == "/v1/images/edits"
+        assert b'name="complexity"\r\n\r\nlow\r\n' in body
+    else:
+        assert path == "/v1/images/generations"
+        assert json.loads(body)["complexity"] == "low"
