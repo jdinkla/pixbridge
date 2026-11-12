@@ -1,14 +1,12 @@
 """Style transfer prompt consistency check — generate N images from the same
 style prompt + test scene to visually compare consistency across generations."""
 
-import io
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from PIL import Image
-
+from .client import _write_image_bytes
 from .models import GenerationNotes, ImagePrompt
 from .providers.base import BaseImageProvider
 
@@ -141,8 +139,7 @@ def run_consistency_check(
             ext = BaseImageProvider.mime_to_extension(gen_result.mime_type)
             filename = f"{style}_{provider_name}_{index:02d}{ext}"
             image_path = output_dir / filename
-            image = Image.open(io.BytesIO(gen_result.image_data))
-            image.save(image_path)
+            _write_image_bytes(gen_result.image_data, gen_result.mime_type, image_path)
             return (index, image_path, None)
         except Exception as e:
             return (index, None, str(e))

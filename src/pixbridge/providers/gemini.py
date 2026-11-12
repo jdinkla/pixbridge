@@ -1,6 +1,7 @@
 """Gemini image generation provider."""
 
 import base64
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,12 @@ from PIL import Image
 
 from ..models import ImagePrompt
 from .base import BaseImageProvider, GenerationResult, ProviderCapabilities
+
+logger = logging.getLogger(__name__)
+
+#: Maximum number of reference images sent per request; extras are dropped
+#: with a warning.
+MAX_REFERENCE_IMAGES = 6
 
 
 def _extract_image_part(
@@ -175,7 +182,9 @@ class GeminiProvider(BaseImageProvider):
 
         Args:
             prompt: The ImagePrompt containing the full prompt.
-            reference_images: Paths to reference sheet images (max 6 used).
+            reference_images: Paths to reference sheet images. Every path must
+                exist. Only the first 6 are sent; extras are dropped with a
+                logged warning.
             model: Gemini model to use.
             size: Size preset (1K, 2K).
             aspect_ratio: Aspect ratio for the output.
@@ -186,6 +195,9 @@ class GeminiProvider(BaseImageProvider):
 
         Returns:
             GenerationResult with the generated image.
+
+        Raises:
+            FileNotFoundError: If any reference image does not exist.
         """
         del output_format, output_compression  # Unsupported by Gemini.
         caps = self.capabilities
@@ -196,11 +208,23 @@ class GeminiProvider(BaseImageProvider):
         self.validate_params(model=model, size=size, aspect_ratio=aspect_ratio)
         assert model is not None  # narrowed: validate_params raises when None
 
-        # Load reference images as PIL (cap at 6 for optimal identity focus)
-        pil_refs = []
-        for ref_path in reference_images[:6]:
-            if ref_path.exists():
-                pil_refs.append(Image.open(ref_path))
+        # Require every reference to exist — silent drops produce surprisingly
+        # off-target output. Checked before any API call.
+        for ref in reference_images:
+            ref_path = Path(ref)
+            if not ref_path.exists():
+                raise FileNotFoundError(f"Reference image not found: {ref_path}")
+
+        # Cap at MAX_REFERENCE_IMAGES for optimal identity focus.
+        sent_refs = [Path(ref) for ref in reference_images[:MAX_REFERENCE_IMAGES]]
+        if len(reference_images) > MAX_REFERENCE_IMAGES:
+            logger.warning(
+                "Gemini reference images are capped at %d; using the first %d of %d",
+                MAX_REFERENCE_IMAGES,
+                MAX_REFERENCE_IMAGES,
+                len(reference_images),
+            )
+        pil_refs = [Image.open(ref_path) for ref_path in sent_refs]
 
         # Build multimodal contents: reference images first, then text prompt.
         # Typed as Any because google-genai accepts PIL Image at runtime but
@@ -232,7 +256,7 @@ class GeminiProvider(BaseImageProvider):
             metadata={
                 "size": size,
                 "aspect_ratio": aspect_ratio,
-                "reference_images": [str(p) for p in reference_images[:6]],
+                "reference_images": [str(p) for p in sent_refs],
                 "temperature": temperature,
             },
         )

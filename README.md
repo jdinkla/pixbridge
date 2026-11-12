@@ -64,7 +64,7 @@ path = client.generate_image(
 
 For OpenAI, style transfer and reference images run through the image edits endpoint (a single reference image performs style transfer; multiple references compose) — there is no dedicated "style" parameter.
 
-Any model can be selected at runtime with `--model`. The CLI also accepts size presets `720p`, `1080p`, `2160p`, or a raw `WxH` string (resolved per-provider). OpenAI (`gpt-image-2`) validates sizes by rule — any `WxH` where both dimensions are divisible by 16, the ratio is within `[1:3, 3:1]`, and `max(W, H) ≤ 3840`, with 655,360–8,294,400 total pixels — so true `9:16` (`1152x2048`) and `16:9` (`2048x1152`) work; `1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160` are recommended values surfaced for autocompletion.
+Any model can be selected at runtime with `--model`. The CLI also accepts size presets `720p`, `1080p`, `2160p`, or a raw `WxH` string (resolved per-provider). For OpenAI an explicit size always wins over the aspect ratio (which only picks a size when none is given); the presets resolve to true 16:9 sizes `1280x720`, `2048x1152` and `3840x2160`. OpenAI (`gpt-image-2`) validates sizes by rule — any `WxH` where both dimensions are divisible by 16, the ratio is within `[1:3, 3:1]`, and `max(W, H) ≤ 3840`, with 655,360–8,294,400 total pixels — so true `9:16` (`1152x2048`) and `16:9` (`2048x1152`) work; `1024x1024`, `1024x1536`, `1536x1024`, `2560x1440`, `3840x2160` are recommended values surfaced for autocompletion.
 
 ### Provider capability surface
 

@@ -20,15 +20,15 @@ logger = logging.getLogger(__name__)
 
 # Mapping from named aspect ratios to OpenAI WxH sizes.
 #
-# `16:9` and `9:16` use the true-ratio sizes (2048x1152, 1152x2048). Earlier
-# versions mapped these to 1536x1024 / 1024x1536, which are actually 3:2 / 2:3
-# — those values remain available via the explicit `3:2` and `2:3` keys for
-# callers who want the legacy behavior.
+# Every key maps to a size of exactly that ratio. Earlier versions mapped
+# `16:9`/`9:16` and `4:3`/`3:4` to 1536x1024 / 1024x1536, which are actually
+# 3:2 / 2:3 — those values remain available via the explicit `3:2` and `2:3`
+# keys for callers who want the legacy behavior.
 ASPECT_RATIO_TO_SIZE = {
     "16:9": "2048x1152",
     "9:16": "1152x2048",
-    "4:3": "1536x1024",
-    "3:4": "1024x1536",
+    "4:3": "1536x1152",
+    "3:4": "1152x1536",
     "3:2": "1536x1024",
     "2:3": "1024x1536",
     "1:1": "1024x1024",
@@ -325,8 +325,8 @@ class OpenAIProvider(BaseImageProvider):
         Args:
             prompt: The ImagePrompt containing the full prompt.
             model: OpenAI model to use.
-            size: Size dimensions. If aspect_ratio is provided, it takes precedence.
-            aspect_ratio: Aspect ratio (maps to OpenAI size parameter).
+            size: Size dimensions. Takes precedence over aspect_ratio.
+            aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
             quality: Quality level (low, medium, high, auto; 2.5 also xhigh, max).
             moderation: Output-moderation strictness ("auto" | "low"). "low"
                 relaxes OpenAI's stricter default so dark/literary content is
@@ -346,12 +346,14 @@ class OpenAIProvider(BaseImageProvider):
             raise RuntimeError("OpenAI provider has no default quality configured")
         moderation = moderation or caps.default_moderation
 
-        # Determine size: aspect_ratio takes precedence if provided
-        if aspect_ratio:
-            size = self._aspect_ratio_to_size(aspect_ratio)
-        else:
-            size = size or caps.default_size
-            aspect_ratio = caps.default_aspect_ratio
+        # Determine size: an explicit size wins; aspect_ratio maps to a size
+        # only when no size is given.
+        if size is None:
+            if aspect_ratio:
+                size = self._aspect_ratio_to_size(aspect_ratio)
+            else:
+                size = caps.default_size
+        aspect_ratio = aspect_ratio or caps.default_aspect_ratio
         if size is None:
             raise RuntimeError("OpenAI provider has no default size configured")
 
@@ -463,8 +465,8 @@ class OpenAIProvider(BaseImageProvider):
             reference_images: Paths to reference images. The OpenAI API accepts
                 multiple images that are combined into a single generation.
             model: OpenAI model to use (defaults to provider default).
-            size: Size dimensions. If aspect_ratio is provided, it takes precedence.
-            aspect_ratio: Aspect ratio (maps to OpenAI size).
+            size: Size dimensions. Takes precedence over aspect_ratio.
+            aspect_ratio: Aspect ratio (maps to an OpenAI size only when size is not given).
             quality: Quality level (low, medium, high, auto; 2.5 also xhigh, max).
             temperature: Ignored (accepted for cross-provider parity).
             output_format: Output image format ('png', 'jpeg', 'webp').
@@ -480,11 +482,14 @@ class OpenAIProvider(BaseImageProvider):
         if quality is None:
             raise RuntimeError("OpenAI provider has no default quality configured")
 
-        if aspect_ratio:
-            size = self._aspect_ratio_to_size(aspect_ratio)
-        else:
-            size = size or caps.default_size
-            aspect_ratio = caps.default_aspect_ratio
+        # Determine size: an explicit size wins; aspect_ratio maps to a size
+        # only when no size is given.
+        if size is None:
+            if aspect_ratio:
+                size = self._aspect_ratio_to_size(aspect_ratio)
+            else:
+                size = caps.default_size
+        aspect_ratio = aspect_ratio or caps.default_aspect_ratio
         if size is None:
             raise RuntimeError("OpenAI provider has no default size configured")
 

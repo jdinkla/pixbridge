@@ -38,6 +38,39 @@ def _resolve_presets_dir(preset_dir: Path | None = None) -> Path:
     return DEFAULT_STYLE_PRESETS_DIR
 
 
+#: File suffixes (lower-case) and the MIME type whose bytes they hold.
+_SUFFIX_TO_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
+
+
+def _write_image_bytes(image_data: bytes, mime_type: str, path: Path) -> None:
+    """Validate provider image bytes and write them to ``path``.
+
+    The data is fully decoded first, so corrupt or undecodable data raises
+    before anything is written. When ``path``'s suffix matches ``mime_type``
+    (and the decoded format agrees), the provider's bytes are written verbatim
+    — re-encoding would discard ``output_compression``, add a second lossy pass
+    for JPEG/WebP and drop embedded metadata. Otherwise PIL converts the image
+    to the format implied by the suffix.
+    """
+    with Image.open(io.BytesIO(image_data)) as probe:
+        detected_mime = Image.MIME.get(probe.format or "")
+        probe.verify()
+    # verify() invalidates the image; reopen and fully decode to catch
+    # truncated data that verify() does not detect (e.g. JPEG).
+    with Image.open(io.BytesIO(image_data)) as image:
+        image.load()
+        if _SUFFIX_TO_MIME.get(path.suffix.lower()) == mime_type == detected_mime:
+            path.write_bytes(image_data)
+        else:
+            image.save(path)
+
+
 class ImageClient:
     """Unified client for image generation with multi-provider support."""
 
@@ -64,9 +97,10 @@ class ImageClient:
             default_output_compression: Default compression level 0-100 for
                 jpeg/webp.
             default_reference_images: Default reference images applied to every
-                generate_image() call. When non-empty (and the provider
-                supports references), generate_image() is silently promoted to
-                generate_image_with_references(). Per-call references on
+                generate_image() call. When non-empty, generate_image() is
+                promoted to generate_image_with_references(); if the provider
+                does not support references, generate_image() raises
+                ``ValueError``. Per-call references on
                 generate_image_with_references() always win.
             style_presets_dir: Directory holding style-transfer preset ``.md``
                 files. When None, falls back to the
@@ -173,6 +207,10 @@ class ImageClient:
 
         Returns:
             Path to the saved image file.
+
+        Raises:
+            ValueError: If ``default_reference_images`` is set but the
+                provider does not support reference images.
         """
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -182,10 +220,21 @@ class ImageClient:
         if output_compression is None:
             output_compression = self.default_output_compression
 
-        # Auto-promote to references when client has defaults configured and the
-        # active provider supports them. Slide-pipeline use case: --ref-image is
-        # set globally and every slide should use the same anchors.
-        if self.default_reference_images and self.provider.capabilities.supports_reference_images:
+        # Auto-promote to references when client has defaults configured.
+        # Slide-pipeline use case: --ref-image is set globally and every slide
+        # should use the same anchors. Checked here rather than in __init__ so
+        # the provider stays lazily initialized.
+        if (
+            self.default_reference_images
+            and not self.provider.capabilities.supports_reference_images
+        ):
+            raise ValueError(
+                f"Provider '{self.provider_name}' does not support reference "
+                "images, but default_reference_images is set. Use a provider "
+                "with supports_reference_images=True (e.g. 'gemini') or create "
+                "the client without default_reference_images."
+            )
+        if self.default_reference_images:
             t0 = time.monotonic()
             result = self.provider.generate_with_references(
                 prompt=prompt,
@@ -244,9 +293,7 @@ class ImageClient:
         filename = f"generated_{uuid.uuid4().hex[:12]}{ext}"
         image_path = output_dir / filename
 
-        # Use PIL to verify and save the image
-        image = Image.open(io.BytesIO(result.image_data))
-        image.save(image_path)
+        _write_image_bytes(result.image_data, result.mime_type, image_path)
 
         return image_path
 
@@ -415,9 +462,9 @@ class ImageClient:
             output_path = Path(output_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Save via PIL
-        image = Image.open(io.BytesIO(result.image_data))
-        image.save(output_path)
+        # Bytes are kept verbatim when the suffix matches the returned format;
+        # a mismatched suffix converts the image to that suffix's format.
+        _write_image_bytes(result.image_data, result.mime_type, output_path)
 
         return output_path
 

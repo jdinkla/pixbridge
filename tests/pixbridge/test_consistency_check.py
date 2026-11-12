@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from pixbridge.consistency_check import (
     ConsistencyResult,
     build_consistency_prompt,
@@ -11,6 +13,7 @@ from pixbridge.consistency_check import (
     run_consistency_check,
 )
 from pixbridge.models import ImagePrompt
+from pixbridge.providers.base import GenerationResult
 
 # --- normalize_style_label ---
 
@@ -223,6 +226,51 @@ class TestRunConsistencyCheck:
         assert call_kwargs["model"] == "custom-model"
         assert call_kwargs["quality"] == "high"
         assert call_kwargs["aspect_ratio"] == "4:3"
+
+    @pytest.mark.parametrize(
+        ("fmt", "mime"), [("png", "image/png"), ("jpeg", "image/jpeg"), ("webp", "image/webp")]
+    )
+    def test_saved_bytes_match_provider(self, fmt, mime, tmp_path, encoded_image_bytes):
+        data = encoded_image_bytes(fmt)
+        provider = self._make_mock_provider(data)
+        provider.generate.return_value = GenerationResult(
+            image_data=data, mime_type=mime, provider="gemini", model="test-model"
+        )
+
+        result = run_consistency_check(
+            provider=provider,
+            style="test",
+            style_text="style",
+            output_dir=tmp_path / "out",
+            count=2,
+        )
+
+        assert result.failures == []
+        assert len(result.images) == 2
+        for path in result.images:
+            assert path.read_bytes() == data
+
+    @pytest.mark.parametrize("truncate", [False, True], ids=["garbage", "truncated-jpeg"])
+    def test_corrupt_data_reported_without_file(self, truncate, tmp_path, encoded_image_bytes):
+        jpeg = encoded_image_bytes("jpeg")
+        data = jpeg[: len(jpeg) // 2] if truncate else b"not an image"
+        provider = self._make_mock_provider(data)
+        provider.generate.return_value = GenerationResult(
+            image_data=data, mime_type="image/jpeg", provider="gemini", model="test-model"
+        )
+        out = tmp_path / "out"
+
+        result = run_consistency_check(
+            provider=provider,
+            style="test",
+            style_text="style",
+            output_dir=out,
+            count=1,
+        )
+
+        assert result.images == []
+        assert len(result.failures) == 1
+        assert list(out.iterdir()) == []
 
 
 # --- consistency_check_command (CLI) ---

@@ -363,6 +363,41 @@ class TestGenerateImageWithReferences:
         assert call_kwargs["temperature"] == 0.3
 
 
+class TestGenerateImageDefaultReferences:
+    def test_promotes_to_references_when_supported(self, sample_prompt, tiny_png_bytes, tmp_path):
+        refs = [tmp_path / "anchor.png"]
+        client = ImageClient(default_reference_images=refs)
+        mock_provider = _make_provider(supports_reference_images=True)
+        mock_provider.generate_with_references.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        client.generate_image(sample_prompt, tmp_path / "output")
+
+        call_kwargs = mock_provider.generate_with_references.call_args[1]
+        assert call_kwargs["reference_images"] == refs
+        mock_provider.generate.assert_not_called()
+
+    def test_raises_when_provider_unsupported(self, sample_prompt, tiny_png_bytes, tmp_path):
+        """Default references are no longer silently dropped on unsupported providers."""
+        client = ImageClient(default_reference_images=[tmp_path / "anchor.png"])
+        mock_provider = _make_provider(supports_reference_images=False)
+        mock_provider.generate.return_value = _make_result(tiny_png_bytes)
+        client._provider = mock_provider
+
+        with pytest.raises(ValueError, match="does not support reference"):
+            client.generate_image(sample_prompt, tmp_path / "output")
+        mock_provider.generate.assert_not_called()
+        mock_provider.generate_with_references.assert_not_called()
+
+    @patch("pixbridge.client.get_provider")
+    def test_constructor_stays_lazy(self, mock_get, tmp_path):
+        """The reference-support check must not initialize the provider early."""
+        client = ImageClient(provider="xai", default_reference_images=[tmp_path / "a.png"])
+
+        assert client._provider is None
+        mock_get.assert_not_called()
+
+
 class TestStyleTransferImage:
     def test_basic_style_transfer(self, tiny_png_bytes, tmp_path):
         client = ImageClient()
@@ -774,3 +809,146 @@ class TestSaveImage:
         path = client._save_image(result, tmp_path)
 
         assert path.suffix == ".jpg"
+
+
+_FORMAT_MIME = [("png", "image/png"), ("jpeg", "image/jpeg"), ("webp", "image/webp")]
+_CORRUPT_DATA = [
+    pytest.param(b"definitely not an image", id="garbage"),
+    pytest.param("truncated-jpeg", id="truncated-jpeg"),
+]
+
+
+def _corrupt_bytes(spec, encoded_image_bytes) -> bytes:
+    if spec == "truncated-jpeg":
+        data = encoded_image_bytes("jpeg")
+        return data[: len(data) // 2]
+    return spec
+
+
+class TestSavedBytesMatchProvider:
+    """Bytes on disk must equal GenerationResult.image_data — no PIL re-encode."""
+
+    @pytest.mark.parametrize(("fmt", "mime"), _FORMAT_MIME)
+    def test_generate_image(self, fmt, mime, sample_prompt, encoded_image_bytes, tmp_path):
+        data = encoded_image_bytes(fmt)
+        client = ImageClient()
+        mock_provider = _make_provider()
+        mock_provider.generate.return_value = GenerationResult(
+            image_data=data, mime_type=mime, provider="mock", model="m"
+        )
+        client._provider = mock_provider
+
+        path = client.generate_image(sample_prompt, tmp_path / "out", model="m")
+
+        assert path.read_bytes() == data
+
+    @pytest.mark.parametrize(("fmt", "mime"), _FORMAT_MIME)
+    def test_generate_image_with_references(
+        self, fmt, mime, sample_prompt, encoded_image_bytes, tmp_path
+    ):
+        data = encoded_image_bytes(fmt)
+        client = ImageClient()
+        mock_provider = _make_provider(supports_reference_images=True)
+        mock_provider.generate_with_references.return_value = GenerationResult(
+            image_data=data, mime_type=mime, provider="mock", model="m"
+        )
+        client._provider = mock_provider
+        ref = tmp_path / "ref.png"
+        Image.new("RGB", (4, 4)).save(ref)
+
+        path = client.generate_image_with_references(
+            sample_prompt, [ref], tmp_path / "out", model="m"
+        )
+
+        assert path.read_bytes() == data
+
+    @pytest.mark.parametrize(
+        ("fmt", "mime", "suffix"),
+        [
+            ("png", "image/png", ".png"),
+            ("jpeg", "image/jpeg", ".jpg"),
+            ("jpeg", "image/jpeg", ".jpeg"),
+            ("jpeg", "image/jpeg", ".JPG"),
+            ("webp", "image/webp", ".webp"),
+        ],
+    )
+    def test_style_transfer_matching_suffix(self, fmt, mime, suffix, encoded_image_bytes, tmp_path):
+        data = encoded_image_bytes(fmt)
+        client = ImageClient()
+        mock_provider = _make_provider(supports_style_transfer=True)
+        mock_provider.style_transfer.return_value = GenerationResult(
+            image_data=data, mime_type=mime, provider="mock", model="m"
+        )
+        client._provider = mock_provider
+        input_img = tmp_path / "input.png"
+        Image.new("RGB", (10, 10)).save(input_img)
+        output_img = tmp_path / f"output{suffix}"
+
+        path = client.style_transfer_image(input_img, "style", output_img, model="m")
+
+        assert path.read_bytes() == data
+
+    def test_style_transfer_mismatched_suffix_converts(self, encoded_image_bytes, tmp_path):
+        data = encoded_image_bytes("png")
+        client = ImageClient()
+        mock_provider = _make_provider(supports_style_transfer=True)
+        mock_provider.style_transfer.return_value = GenerationResult(
+            image_data=data, mime_type="image/png", provider="mock", model="m"
+        )
+        client._provider = mock_provider
+        input_img = tmp_path / "input.jpg"
+        Image.new("RGB", (32, 32)).save(input_img)
+
+        # Default output_path overwrites the .jpg input with a PNG result.
+        path = client.style_transfer_image(input_img, "style", model="m")
+
+        assert path == input_img
+        assert path.read_bytes() != data
+        with Image.open(path) as saved:
+            assert saved.format == "JPEG"
+            assert saved.size == (32, 32)
+
+    def test_declared_mime_disagreeing_with_bytes_converts(self, encoded_image_bytes, tmp_path):
+        # Provider claims PNG but sends JPEG: the .png file must still be a PNG.
+        data = encoded_image_bytes("jpeg")
+        client = ImageClient()
+        result = GenerationResult(image_data=data, mime_type="image/png", provider="t", model="m")
+
+        path = client._save_image(result, tmp_path)
+
+        assert path.suffix == ".png"
+        with Image.open(path) as saved:
+            assert saved.format == "PNG"
+
+    @pytest.mark.parametrize("spec", _CORRUPT_DATA)
+    def test_save_image_corrupt_data_raises_without_file(self, spec, encoded_image_bytes, tmp_path):
+        data = _corrupt_bytes(spec, encoded_image_bytes)
+        client = ImageClient()
+        result = GenerationResult(image_data=data, mime_type="image/jpeg", provider="t", model="m")
+        out = tmp_path / "out"
+        out.mkdir()
+
+        with pytest.raises(OSError):
+            client._save_image(result, out)
+
+        assert list(out.iterdir()) == []
+
+    @pytest.mark.parametrize("spec", _CORRUPT_DATA)
+    def test_style_transfer_corrupt_data_raises_without_file(
+        self, spec, encoded_image_bytes, tmp_path
+    ):
+        data = _corrupt_bytes(spec, encoded_image_bytes)
+        client = ImageClient()
+        mock_provider = _make_provider(supports_style_transfer=True)
+        mock_provider.style_transfer.return_value = GenerationResult(
+            image_data=data, mime_type="image/jpeg", provider="mock", model="m"
+        )
+        client._provider = mock_provider
+        input_img = tmp_path / "input.png"
+        Image.new("RGB", (10, 10)).save(input_img)
+        output_img = tmp_path / "out" / "output.jpg"
+
+        with pytest.raises(OSError):
+            client.style_transfer_image(input_img, "style", output_img, model="m")
+
+        assert not output_img.exists()

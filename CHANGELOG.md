@@ -10,6 +10,52 @@ All notable changes to pixbridge are documented in this file.
 - Enforce OpenAI's total pixel limits (655,360–8,294,400) in size validation.
 - Preserve GPT Image 2 support and the existing low-quality default.
 
+### Changed — OpenAI: explicit size now wins over aspect ratio (behaviour change)
+
+- An explicit `size` (WxH or preset) passed to `ImageClient` or `--size` on the
+  CLI is now sent to OpenAI unchanged. Previously the OpenAI provider let
+  `aspect_ratio` take precedence, and because `ImageClient` infers an aspect
+  ratio from every size (and `pixbridge generate` always has one from the prompt
+  YAML), the size was always replaced by the aspect-ratio default: `3840x2160`,
+  `2160p` and `1080p` all produced `2048x1152`, so 4K was unreachable.
+  `aspect_ratio` now maps to a size only when no size is given.
+  **Callers that pass both `size` and `aspect_ratio` to OpenAI will now get the
+  requested size** — check cost/latency if you were passing a large size that
+  was silently being ignored. An invalid explicit size (e.g. `1920x1080`, not
+  divisible by 16) now raises `ValueError` even when an aspect ratio is also
+  given, instead of being replaced.
+- OpenAI presets are now true 16:9: `720p` → `1280x720`, `1080p` → `2048x1152`
+  (1920x1080 is not a valid OpenAI size; this is the next true-16:9 size up).
+  Both were `1536x1024` (3:2) on paper and `2048x1152` in effect. `2160p` →
+  `3840x2160` is unchanged on paper and now actually reaches the API.
+- OpenAI `4:3` → `1536x1152` and `3:4` → `1152x1536` (were `1536x1024` /
+  `1024x1536`, which are 3:2 / 2:3). `3:2` and `2:3` keep those sizes.
+
+### Fixed — saved images are no longer re-encoded
+
+- `ImageClient.generate_image`, `generate_image_with_references`,
+  `style_transfer_image` and the consistency check now write the provider's
+  bytes to disk unchanged when the file extension matches the returned image
+  format, instead of re-encoding through PIL at default settings (which
+  discarded `output_compression`, added a second lossy pass for JPEG/WebP and
+  stripped metadata). The data is still fully decoded first, so corrupt images
+  raise before a file is written. Conversion only happens when the target
+  extension differs from the returned format (e.g. `style_transfer_image` to
+  an `output_path` with another extension).
+
+### Changed — reference-image errors raise instead of being dropped (behaviour change)
+
+- Gemini/Vertex `generate_with_references` now raises `FileNotFoundError` for a
+  missing reference image (matching OpenAI) instead of silently skipping it.
+  Every supplied path is checked, including ones beyond the 6-image cap.
+- Gemini/Vertex log a warning when more than 6 reference images are passed
+  (still truncated to 6); `metadata["reference_images"]` lists only the
+  references actually sent.
+- `ImageClient.generate_image` raises `ValueError` when
+  `default_reference_images` is set but the provider does not support reference
+  images, instead of silently generating without them (consistent with
+  `generate_image_with_references`).
+
 ## [0.2.3] - 2026-07-12
 
 ### Added — task label and subject in usage-log entries

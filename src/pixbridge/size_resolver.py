@@ -2,9 +2,12 @@
 
 import re
 
+# OpenAI entries are true 16:9 sizes that pass validate_openai_size. 1920x1080
+# is not valid there (1080 is not divisible by 16), so 1080p uses the next
+# true-16:9 size up, 2048x1152.
 RESOLUTION_PRESETS = {
-    "720p":  {"gemini": ("1K", "16:9"), "openai": ("1536x1024", "16:9"), "xai": (None, "16:9"), "vertex": ("1K", "16:9")},
-    "1080p": {"gemini": ("1K", "16:9"), "openai": ("1536x1024", "16:9"), "xai": (None, "16:9"), "vertex": ("1K", "16:9")},
+    "720p":  {"gemini": ("1K", "16:9"), "openai": ("1280x720", "16:9"), "xai": (None, "16:9"), "vertex": ("1K", "16:9")},
+    "1080p": {"gemini": ("1K", "16:9"), "openai": ("2048x1152", "16:9"), "xai": (None, "16:9"), "vertex": ("1K", "16:9")},
     "2160p": {"gemini": ("2K", "16:9"), "openai": ("3840x2160", "16:9"), "xai": (None, "16:9"), "vertex": ("2K", "16:9")},
 }
 

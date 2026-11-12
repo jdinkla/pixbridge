@@ -98,6 +98,42 @@ def xai_capabilities() -> ProviderCapabilities:
 
 
 @pytest.fixture
+def encoded_image_bytes():
+    """Factory: encode a deterministic noise image as "png", "jpeg" or "webp".
+
+    Non-default encoder settings (quality 95, PNG compress_level 1 plus a text
+    chunk) guarantee that a PIL round-trip at default settings changes the
+    bytes, so byte-equality assertions detect any re-encode.
+    """
+    import io
+    import random
+
+    from PIL import PngImagePlugin
+
+    rnd = random.Random(0)
+    img = Image.new("RGB", (32, 32))
+    img.putdata(
+        [(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256)) for _ in range(32 * 32)]
+    )
+
+    def _encode(fmt: str) -> bytes:
+        buf = io.BytesIO()
+        if fmt == "png":
+            info = PngImagePlugin.PngInfo()
+            info.add_text("Comment", "pixbridge test fixture")
+            img.save(buf, format="PNG", compress_level=1, pnginfo=info)
+        elif fmt == "jpeg":
+            img.save(buf, format="JPEG", quality=95)
+        elif fmt == "webp":
+            img.save(buf, format="WEBP", quality=95)
+        else:
+            raise ValueError(fmt)
+        return buf.getvalue()
+
+    return _encode
+
+
+@pytest.fixture
 def tiny_png_bytes() -> bytes:
     """A minimal valid PNG image (1x1 red pixel)."""
     img = Image.new("RGB", (1, 1), color="red")

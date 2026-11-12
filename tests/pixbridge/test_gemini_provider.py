@@ -1,6 +1,7 @@
 """Tests for pixbridge.providers.gemini — GeminiProvider with mocked SDK."""
 
 import base64
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -166,7 +167,9 @@ class TestGeminiGenerateWithReferences:
 
         assert result.metadata["temperature"] == 0.5
 
-    def test_caps_at_six_references(self, provider, sample_prompt, tiny_png_bytes, tmp_path):
+    def test_caps_at_six_references_with_warning(
+        self, provider, sample_prompt, tiny_png_bytes, tmp_path, caplog
+    ):
         refs = []
         for i in range(8):
             ref = tmp_path / f"ref{i}.png"
@@ -174,38 +177,79 @@ class TestGeminiGenerateWithReferences:
             refs.append(ref)
 
         mock_client = MagicMock()
-        mock_client.models.generate_content.return_value = _make_gemini_response(
-            tiny_png_bytes
-        )
+        mock_client.models.generate_content.return_value = _make_gemini_response(tiny_png_bytes)
         provider._client = mock_client
 
-        result = provider.generate_with_references(
-            sample_prompt, model="gemini-3-pro-image-preview", reference_images=refs,
-        )
+        with caplog.at_level(logging.WARNING, logger="pixbridge.providers.gemini"):
+            result = provider.generate_with_references(
+                sample_prompt, model="gemini-3-pro-image-preview", reference_images=refs
+            )
 
-        # Only first 6 should be in metadata
-        assert len(result.metadata["reference_images"]) == 6
+        # Metadata lists exactly the 6 references actually sent
+        assert result.metadata["reference_images"] == [str(p) for p in refs[:6]]
+        # 6 PIL images + 1 text prompt
+        contents = mock_client.models.generate_content.call_args[1]["contents"]
+        assert len(contents) == 7
+        warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "first 6 of 8" in warnings[0].getMessage()
 
-    def test_skips_nonexistent_references(self, provider, sample_prompt, tiny_png_bytes, tmp_path):
+    def test_no_warning_at_six_references(
+        self, provider, sample_prompt, tiny_png_bytes, tmp_path, caplog
+    ):
+        refs = []
+        for i in range(6):
+            ref = tmp_path / f"ref{i}.png"
+            Image.new("RGB", (10, 10)).save(ref)
+            refs.append(ref)
+
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = _make_gemini_response(tiny_png_bytes)
+        provider._client = mock_client
+
+        with caplog.at_level(logging.WARNING, logger="pixbridge.providers.gemini"):
+            result = provider.generate_with_references(
+                sample_prompt, model="gemini-3-pro-image-preview", reference_images=refs
+            )
+
+        assert result.metadata["reference_images"] == [str(p) for p in refs]
+        assert not [r for r in caplog.records if r.levelno == logging.WARNING]
+
+    def test_missing_reference_raises(self, provider, sample_prompt, tmp_path):
         existing = tmp_path / "exists.png"
         Image.new("RGB", (10, 10)).save(existing)
         nonexistent = tmp_path / "missing.png"
 
         mock_client = MagicMock()
-        mock_client.models.generate_content.return_value = _make_gemini_response(
-            tiny_png_bytes
-        )
         provider._client = mock_client
 
-        provider.generate_with_references(
-            sample_prompt, model="gemini-3-pro-image-preview", reference_images=[existing, nonexistent],
-        )
+        with pytest.raises(FileNotFoundError, match="Reference image not found"):
+            provider.generate_with_references(
+                sample_prompt,
+                model="gemini-3-pro-image-preview",
+                reference_images=[existing, nonexistent],
+            )
 
-        # Should still succeed — nonexistent is skipped in PIL loading
-        call_kwargs = mock_client.models.generate_content.call_args[1]
-        contents = call_kwargs["contents"]
-        # 1 PIL image + 1 text prompt (nonexistent skipped)
-        assert len(contents) == 2
+        mock_client.models.generate_content.assert_not_called()
+
+    def test_missing_reference_beyond_cap_raises(self, provider, sample_prompt, tmp_path):
+        """A missing path is a caller error even if it would have been truncated."""
+        refs = []
+        for i in range(6):
+            ref = tmp_path / f"ref{i}.png"
+            Image.new("RGB", (10, 10)).save(ref)
+            refs.append(ref)
+        refs.append(tmp_path / "missing.png")
+
+        mock_client = MagicMock()
+        provider._client = mock_client
+
+        with pytest.raises(FileNotFoundError, match=r"missing\.png"):
+            provider.generate_with_references(
+                sample_prompt, model="gemini-3-pro-image-preview", reference_images=refs
+            )
+
+        mock_client.models.generate_content.assert_not_called()
 
     def test_no_image_in_response_raises(self, provider, sample_prompt, tmp_path):
         ref = tmp_path / "ref.png"

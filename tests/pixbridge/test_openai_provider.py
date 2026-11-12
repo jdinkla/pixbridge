@@ -97,10 +97,12 @@ class TestAspectRatioToSize:
         assert provider._aspect_ratio_to_size("9:16") == "1152x2048"
 
     def test_4_3(self, provider):
-        assert provider._aspect_ratio_to_size("4:3") == "1536x1024"
+        # True 4:3 (was 1536x1024 = 3:2).
+        assert provider._aspect_ratio_to_size("4:3") == "1536x1152"
 
     def test_3_4(self, provider):
-        assert provider._aspect_ratio_to_size("3:4") == "1024x1536"
+        # True 3:4 (was 1024x1536 = 2:3).
+        assert provider._aspect_ratio_to_size("3:4") == "1152x1536"
 
     def test_3_2_alias(self, provider):
         # Explicit alias for the legacy 16:9 → 1536x1024 mapping.
@@ -219,7 +221,7 @@ class TestOpenAIGenerate:
         assert result.metadata["quality"] == "low"
         assert result.metadata["aspect_ratio"] == "1:1"
 
-    def test_aspect_ratio_overrides_size(self, provider, sample_prompt, tiny_png_bytes):
+    def test_aspect_ratio_maps_to_size_when_no_size(self, provider, sample_prompt, tiny_png_bytes):
         encoded = base64.b64encode(tiny_png_bytes).decode("ascii")
         mock_client = MagicMock()
         mock_client.images.generate.return_value = _make_openai_response(
