@@ -1,13 +1,11 @@
 ---
 id: TASK-14
-title: >-
-  OpenAI: expose GPT Image 2.6 request options (complexity, SVG/GIF output,
-  markup edits)
+title: 'OpenAI: expose GPT Image 2.6 complexity option and verify auto quality'
 status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-11-12T15:04:00Z'
-updated_date: '2026-11-12T15:15:00Z'
+updated_date: '2026-11-12T15:17:00Z'
 labels: []
 dependencies:
   - TASK-13
@@ -21,13 +19,25 @@ ordinal: 14000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-GPT Image 2.6 Flare and Sunburst add request options that pixbridge does not expose, so callers cannot use them through `ImageClient` or the CLI: a `complexity` field (low/medium/high, API default high, no separate fee), SVG output (generations endpoint only, n=1, no streaming), animated GIF output (`frame_count` 2-16, `frame_duration_ms` 20-2000) and markup-guided edits. TASK-13 added the 2.6 models to the allowlist and deliberately left these out. Facts above come from the OpenAI image guide as read on 2026-11-12, partly via a summarised fetch, so re-verify against the API reference before implementing. Also unverified: whether 2.6 accepts quality `auto`, which pixbridge currently passes through. Decide per option whether it is worth supporting; `complexity` is the cheapest to add and affects cost/latency, GIF/SVG touch output-format handling and file saving.
+GPT Image 2.6 Flare and Sunburst accept a `complexity` request field that pixbridge did not expose, so callers could not set it through `ImageClient` or the CLI. TASK-13 also left open whether 2.6 accepts quality `auto`, which pixbridge passes through. Scope was narrowed on 2026-11-12: SVG/GIF output and markup-guided edits moved to TASK-15 because they change output saving and have no known use case. Live probe on 2026-11-12 (images/generations, 1024x1024, quality low): 2.6-flare accepts quality `auto`; `complexity` accepts low/medium/high and returns 400 for other values; gpt-image-2 and 2.5-flare reject any `complexity` with 400 "not supported for this image model"; output token usage was identical (824) with complexity low and with it omitted, so it does not change billed output tokens at low quality.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each 2.6-only option is either supported end to end (ImageClient and CLI) or explicitly documented as unsupported
-- [ ] #2 Options that only 2.6 accepts are rejected locally with a ValueError for gpt-image-2 and 2.5 before any API call
-- [ ] #3 Whether 2.6 accepts quality `auto` is verified against the API and validation matches the result
-- [ ] #4 Unit tests cover the new parameters and README documents them
+- [ ] #1 `complexity` (low/medium/high) can be set via ImageClient.generate_image, generate_image_with_references and `pixbridge generate --complexity`, and reaches the OpenAI generations and edits requests
+- [ ] #2 `complexity` is rejected locally with a ValueError before any API call for gpt-image-2, 2.5 models, invalid values, and providers without complexity support
+- [ ] #3 When `complexity` is not given, nothing is sent and the API default applies
+- [ ] #4 Whether 2.6 accepts quality `auto` is verified against the API and validation matches the result
+- [ ] #5 Unit tests cover the new parameter and README documents it
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. ProviderCapabilities.complexity_levels (None = unsupported); OpenAI = low/medium/high.
+2. BaseImageProvider.validate_params gains complexity: reject when unsupported or invalid. OpenAI adds: requires a 2.6 model.
+3. OpenAIProvider.generate / generate_with_references accept complexity and send it via extra_body (installed SDK 2.46 has no named parameter); record it in result metadata.
+4. ImageClient.generate_image / generate_image_with_references accept complexity; pass it to the provider only when set, after checking capabilities, so other providers keep their signatures.
+5. CLI: `generate --complexity`.
+6. Tests (provider mock + real-SDK wire test for both endpoints, base, client, CLI), README/CLAUDE.md/CHANGELOG, one live call through the provider for each endpoint.
+<!-- SECTION:PLAN:END -->
