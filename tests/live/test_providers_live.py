@@ -3,6 +3,12 @@
 These tests are opt-in via the `live` marker. They are skipped by default
 (see `addopts` in pyproject.toml) and can be run with `just test-live` or
 `pytest -m live`. Tests skip automatically when required API keys are missing.
+
+pixbridge has no default model, so each provider's model comes from the
+environment as well: ``PIXBRIDGE_LIVE_<PROVIDER>_MODEL`` (e.g.
+``PIXBRIDGE_LIVE_OPENAI_MODEL=gpt-image-2``). `just test-live` sets these from
+the values at the top of the justfile; under a bare `pytest -m live` a provider
+whose model variable is unset is skipped, same as a missing API key.
 """
 
 from __future__ import annotations
@@ -10,6 +16,7 @@ from __future__ import annotations
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -40,6 +47,40 @@ SHARED_PROMPT = ImagePrompt(
     ),
 )
 
+
+
+def _live_model(provider_name: str) -> str:
+    """Return the model to test ``provider_name`` with, or skip the test."""
+    env_var = f"PIXBRIDGE_LIVE_{provider_name.upper()}_MODEL"
+    model = os.environ.get(env_var)
+    if not model:
+        pytest.skip(f"{env_var} not set (pixbridge has no default model)")
+    return model
+
+
+def _generate_or_fail(client: ImageClient, prompt: ImagePrompt, **kwargs: Any) -> Path:
+    """Generate an image, turning a provider/SDK error into a one-line failure.
+
+    A live failure is almost always the provider saying no (billing, quota, an
+    unknown model, an outage). The SDK's own message says which; the traceback
+    through the SDK internals adds nothing, so it is suppressed.
+    """
+    try:
+        return client.generate_image(prompt, **kwargs)
+    except Exception as e:
+        # SDK errors carry a short human-readable `message`; str(e) appends the
+        # raw response body, which is noise here.
+        detail = getattr(e, "message", None) or str(e)
+        status = getattr(e, "code", None) or getattr(e, "status_code", None)
+        error = f"{type(e).__name__}" + (f" {status}" if status else "") + f": {detail}"
+    # Fail outside the `except` block so pytest does not also print the chained
+    # original exception.
+    pytest.fail(
+        f"{client.provider_name} (model={kwargs.get('model')}) API call failed: {error}",
+        pytrace=False,
+    )
+
+
 PROPERTIES: dict[str, str] = {
     "subject_is_apple": "The main subject is a single apple (not multiple, not another fruit).",
     "apple_is_red": "The apple is predominantly red.",
@@ -68,6 +109,7 @@ def test_provider_generates_verifiable_image(
         provider_name == "gemini" and os.environ.get("GEMINI_API_KEY")
     ):
         pytest.skip(f"{env_key} not set")
+    model = _live_model(provider_name)
 
     output_dir = LIVE_OUTPUT_ROOT / provider_name
     if output_dir.exists():
@@ -77,8 +119,8 @@ def test_provider_generates_verifiable_image(
     client = ImageClient(provider=provider_name)
     # generate_image() does not currently read prompt.generation_notes.aspect_ratio,
     # so pass it explicitly — otherwise OpenAI falls back to its 1:1 default.
-    image_path = client.generate_image(
-        SHARED_PROMPT, output_dir=output_dir, aspect_ratio="16:9"
+    image_path = _generate_or_fail(
+        client, SHARED_PROMPT, output_dir=output_dir, model=model, aspect_ratio="16:9"
     )
 
     assert image_path.exists(), f"{provider_name} did not produce an image file"
@@ -107,6 +149,7 @@ def test_openai_true_9_16_size() -> None:
     """
     if not os.environ.get("OPENAI_API_KEY"):
         pytest.skip("OPENAI_API_KEY not set")
+    model = _live_model("openai")
 
     try:
         from PIL import Image
@@ -131,9 +174,11 @@ def test_openai_true_9_16_size() -> None:
     )
 
     client = ImageClient(provider="openai")
-    image_path = client.generate_image(
+    image_path = _generate_or_fail(
+        client,
         vertical_prompt,
         output_dir=output_dir,
+        model=model,
         size="1152x2048",
         aspect_ratio="9:16",
     )

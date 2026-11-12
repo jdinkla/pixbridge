@@ -1,5 +1,12 @@
 # pixbridge justfile
 
+# Models the live tests run against. Configuration, not secrets: kept here
+# rather than in .envrc. Override per run via the environment, e.g.
+# `PIXBRIDGE_LIVE_OPENAI_MODEL=gpt-image-2.5-flare just test-live`.
+export PIXBRIDGE_LIVE_GEMINI_MODEL := env("PIXBRIDGE_LIVE_GEMINI_MODEL", "gemini-3-pro-image-preview")
+export PIXBRIDGE_LIVE_OPENAI_MODEL := env("PIXBRIDGE_LIVE_OPENAI_MODEL", "gpt-image-2")
+export PIXBRIDGE_LIVE_XAI_MODEL := env("PIXBRIDGE_LIVE_XAI_MODEL", "grok-imagine-image")
+
 default:
     @just --list
 
@@ -11,9 +18,9 @@ build:
 test:
     uv run pytest tests/
 
-[doc("Run live provider tests (hits real APIs; needs API keys set)")]
-test-live:
-    uv run pytest tests/ -m live -v
+[doc("Run live provider tests (hits real APIs; needs API keys set; models are set at the top of this justfile; extra args go to pytest, e.g. `just test-live -k gemini`)")]
+test-live *ARGS:
+    uv run pytest tests/ -m live -v -rs {{ARGS}}
 
 [doc("Run tests with coverage reporting")]
 coverage:
