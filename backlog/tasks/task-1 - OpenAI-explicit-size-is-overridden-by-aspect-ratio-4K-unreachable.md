@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-11-11T15:02:00Z'
-updated_date: '2026-11-12T13:43:00Z'
+updated_date: '2026-11-12T13:46:00Z'
 labels:
   - openai
   - sizes
@@ -35,3 +35,13 @@ The existing unit tests missed this because each layer is mocked in isolation; t
 - [ ] #4 Regression tests mock only the SDK client and assert the size kwarg sent for 3840x2160, 2160p, 1080p and a portrait size, via ImageClient and via the CLI generate command
 - [ ] #5 CHANGELOG documents the behaviour change
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. OpenAIProvider.generate / generate_with_references: explicit size wins; aspect_ratio maps to a size only when size is None.
+2. RESOLUTION_PRESETS openai: 720p -> 1280x720, 1080p -> 2048x1152 (1920x1080 is not divisible by 16), 2160p stays 3840x2160.
+3. ASPECT_RATIO_TO_SIZE: 4:3 -> 1536x1152, 3:4 -> 1152x1536; 3:2 / 2:3 unchanged.
+4. New tests/pixbridge/test_openai_size_e2e.py: ImageClient + CLI generate with only the OpenAI SDK client mocked.
+5. CHANGELOG + README note on the behaviour change.
+<!-- SECTION:PLAN:END -->
