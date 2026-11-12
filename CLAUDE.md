@@ -4,28 +4,6 @@
 
 Standalone multi-provider AI image generation library. Supports Gemini, OpenAI, xAI, and Vertex AI providers through a unified `ImageClient` API.
 
-## Project Structure
-
-```
-src/pixbridge/
-  __init__.py
-  _usage_log.py          # Thread-safe JSONL usage logging (inlined)
-  client.py              # ImageClient — unified generation API
-  cli.py                 # CLI entry point (pixbridge command)
-  models.py              # Pydantic models (ImagePrompt, GenerationNotes)
-  size_resolver.py       # Resolves preset/WxH sizes to provider-native sizes
-  integrity_check.py     # Image integrity validation
-  consistency_check.py   # Multi-image consistency testing
-  providers/
-    __init__.py           # Provider registry (get_provider, list_providers)
-    base.py               # BaseImageProvider ABC, GenerationResult, ProviderCapabilities
-    gemini.py
-    openai.py
-    xai.py
-    vertex.py
-tests/pixbridge/          # Unit tests (no __init__.py — avoids shadowing the package)
-```
-
 ## Development
 
 ```bash
