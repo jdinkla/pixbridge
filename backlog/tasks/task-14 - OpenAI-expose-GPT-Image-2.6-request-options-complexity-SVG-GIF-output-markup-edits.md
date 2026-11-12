@@ -1,11 +1,11 @@
 ---
 id: TASK-14
 title: 'OpenAI: expose GPT Image 2.6 complexity option and verify auto quality'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-12T15:04:00Z'
-updated_date: '2026-11-12T15:17:00Z'
+updated_date: '2026-11-12T15:21:00Z'
 labels: []
 dependencies:
   - TASK-13
@@ -24,11 +24,11 @@ GPT Image 2.6 Flare and Sunburst accept a `complexity` request field that pixbri
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `complexity` (low/medium/high) can be set via ImageClient.generate_image, generate_image_with_references and `pixbridge generate --complexity`, and reaches the OpenAI generations and edits requests
-- [ ] #2 `complexity` is rejected locally with a ValueError before any API call for gpt-image-2, 2.5 models, invalid values, and providers without complexity support
-- [ ] #3 When `complexity` is not given, nothing is sent and the API default applies
-- [ ] #4 Whether 2.6 accepts quality `auto` is verified against the API and validation matches the result
-- [ ] #5 Unit tests cover the new parameter and README documents it
+- [x] #1 `complexity` (low/medium/high) can be set via ImageClient.generate_image, generate_image_with_references and `pixbridge generate --complexity`, and reaches the OpenAI generations and edits requests
+- [x] #2 `complexity` is rejected locally with a ValueError before any API call for gpt-image-2, 2.5 models, invalid values, and providers without complexity support
+- [x] #3 When `complexity` is not given, nothing is sent and the API default applies
+- [x] #4 Whether 2.6 accepts quality `auto` is verified against the API and validation matches the result
+- [x] #5 Unit tests cover the new parameter and README documents it
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -41,3 +41,15 @@ GPT Image 2.6 Flare and Sunburst accept a `complexity` request field that pixbri
 5. CLI: `generate --complexity`.
 6. Tests (provider mock + real-SDK wire test for both endpoints, base, client, CLI), README/CLAUDE.md/CHANGELOG, one live call through the provider for each endpoint.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Design: complexity is passed from ImageClient to the provider only when set, after a capability check, so Gemini/xAI/vertex generate() signatures stay untouched. Sent via extra_body because the installed openai SDK (2.46.0) has no named complexity parameter; a real-SDK wire test confirms it lands in the JSON body (generations) and the multipart form (edits). No default is sent. CLI support is on `generate` only; `style-transfer` and `consistency-check` do not take --complexity.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Added the GPT Image 2.6 `complexity` option (low/medium/high): ProviderCapabilities.complexity_levels, validation in BaseImageProvider.validate_params plus an OpenAI 2.6-only check, OpenAIProvider.generate / generate_with_references, ImageClient.generate_image / generate_image_with_references, and `pixbridge generate --complexity`. It is rejected locally for gpt-image-2, 2.5, invalid values and providers without support, and omitted from the request when not set. Verified quality `auto` on 2.6 live; existing validation was already correct. Verification: `just check` green (632 unit tests, ruff, mypy); live on 2026-11-12 through ImageClient with gpt-image-2.6-flare and complexity=low on both the generations and edits endpoints. Observation: billed output tokens were identical with complexity low and omitted at low quality, so it is a latency/detail control rather than a cost one. SVG/GIF output and markup-guided edits are tracked in TASK-15.
+<!-- SECTION:FINAL_SUMMARY:END -->
