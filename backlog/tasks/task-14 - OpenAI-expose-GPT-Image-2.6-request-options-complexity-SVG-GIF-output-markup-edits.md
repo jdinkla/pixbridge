@@ -3,9 +3,11 @@ id: TASK-14
 title: >-
   OpenAI: expose GPT Image 2.6 request options (complexity, SVG/GIF output,
   markup edits)
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-11-12T15:04:00Z'
+updated_date: '2026-11-12T15:15:00Z'
 labels: []
 dependencies:
   - TASK-13
