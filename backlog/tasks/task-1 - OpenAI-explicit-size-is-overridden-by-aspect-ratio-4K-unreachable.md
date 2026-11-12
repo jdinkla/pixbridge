@@ -1,11 +1,11 @@
 ---
 id: TASK-1
 title: 'OpenAI: explicit size is overridden by aspect ratio (4K unreachable)'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-11-11T15:02:00Z'
-updated_date: '2026-11-12T13:46:00Z'
+updated_date: '2026-11-12T13:53:00Z'
 labels:
   - openai
   - sizes
@@ -29,11 +29,11 @@ The existing unit tests missed this because each layer is mocked in isolation; t
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An explicit size (WxH or preset) passed via ImageClient or CLI reaches the OpenAI SDK call unchanged when it is valid; aspect ratio maps to a size only when no size is given
-- [ ] #2 720p/1080p/2160p presets resolve to true 16:9 OpenAI sizes
-- [ ] #3 ASPECT_RATIO_TO_SIZE 4:3 and 3:4 map to true 4:3 / 3:4 sizes; 3:2 and 2:3 keep 1536x1024 / 1024x1536
-- [ ] #4 Regression tests mock only the SDK client and assert the size kwarg sent for 3840x2160, 2160p, 1080p and a portrait size, via ImageClient and via the CLI generate command
-- [ ] #5 CHANGELOG documents the behaviour change
+- [x] #1 An explicit size (WxH or preset) passed via ImageClient or CLI reaches the OpenAI SDK call unchanged when it is valid; aspect ratio maps to a size only when no size is given
+- [x] #2 720p/1080p/2160p presets resolve to true 16:9 OpenAI sizes
+- [x] #3 ASPECT_RATIO_TO_SIZE 4:3 and 3:4 map to true 4:3 / 3:4 sizes; 3:2 and 2:3 keep 1536x1024 / 1024x1536
+- [x] #4 Regression tests mock only the SDK client and assert the size kwarg sent for 3840x2160, 2160p, 1080p and a portrait size, via ImageClient and via the CLI generate command
+- [x] #5 CHANGELOG documents the behaviour change
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -45,3 +45,15 @@ The existing unit tests missed this because each layer is mocked in isolation; t
 4. New tests/pixbridge/test_openai_size_e2e.py: ImageClient + CLI generate with only the OpenAI SDK client mocked.
 5. CHANGELOG + README note on the behaviour change.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Compatibility call: size wins outright, no opt-out flag. Callers that passed both size and aspect_ratio to OpenAI now get the requested size (cost/latency can change). An invalid explicit size now raises even when an aspect ratio is given. 1080p maps to 2048x1152 because 1920x1080 fails the divisible-by-16 rule.
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+OpenAI provider (generate + generate_with_references): an explicit size now wins; aspect_ratio maps to a size only when none is given. Presets: 720p -> 1280x720, 1080p -> 2048x1152, 2160p -> 3840x2160. 4:3 -> 1536x1152, 3:4 -> 1152x1536; 3:2/2:3 unchanged. New tests/pixbridge/test_openai_size_e2e.py runs ImageClient and the CLI generate command with only the SDK client mocked (44 cases; 29 fail on the old code). CHANGELOG and README updated. Full suite: 553 passed; ruff check and mypy clean. Risk: downstream callers (Polyptych-media-creator) that pass both size and aspect ratio will see larger outputs where the size was previously ignored.
+<!-- SECTION:FINAL_SUMMARY:END -->
