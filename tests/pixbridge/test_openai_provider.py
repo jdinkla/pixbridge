@@ -5,9 +5,15 @@ import json
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
 from openai import OpenAI
+
+# The OpenAI SDK moved from httpx (2.x) to httpx2 (3.x); use whichever the
+# installed SDK ships so the mock transport matches its client type.
+try:
+    import httpx2 as httpx
+except ImportError:
+    import httpx
 
 from pixbridge.providers.openai import (
     ASPECT_RATIO_TO_SIZE,
